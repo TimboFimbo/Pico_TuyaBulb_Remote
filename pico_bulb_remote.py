@@ -15,9 +15,9 @@ import urequests
 # Change the IP addresses of the endpoints to that of your server
 ssid = 'SSID HERE'
 password = 'PASSWORD HERE'
-set_color_url = 'http://192.168.0.120:8000/test_set_color'
-set_power_url = 'http://192.168.0.120:8000/test_set_power'
-set_brightness_url = 'http://192.168.0.120:8000/set_brightness'
+set_color_url = 'http://192.168.0.119:8000/test_set_color'
+set_power_url = 'http://192.168.0.119:8000/test_set_power'
+set_brightness_url = 'http://192.168.0.119:8000/set_brightness'
 
 keypad = picokeypad.PicoKeypad()
 keypad.set_brightness(1.0)
@@ -58,8 +58,10 @@ button_press_count = 0
 TIME_TO_NEXT_PRESS = 10
 press_countdown = TIME_TO_NEXT_PRESS
 press_counter_on = False
-# current_brightness = 10
-# BRIGHTNESS_JUMP = 100
+
+screenoff = False
+TIME_TO_SCREENOFF = 50
+screenoff_countdown = TIME_TO_SCREENOFF
 
 COL_BRIGHT_JUMP = 8
 col_multiplier = 1
@@ -165,8 +167,11 @@ while True:
             if press_counter_on == False:
                 press_counter_on = True
                 button_press_count = 0
-            button_press_count = button_press_count + 1
-            press_countdown = TIME_TO_NEXT_PRESS
+            if screenoff == False:            
+                button_press_count = button_press_count + 1
+                press_countdown = TIME_TO_NEXT_PRESS
+            screenoff = False            
+            screenoff_countdown = TIME_TO_SCREENOFF
             if button_press_count > 1:
 #                 current_brightness = button_press_count
                 col_multiplier = col_multiplier + 1
@@ -185,8 +190,9 @@ while True:
                     cols_with_multiplier[find][1] = 0
                 if cols_with_multiplier[find][2] < 0:
                     cols_with_multiplier[find][2] = 0
+                if screenoff == False:                
+                    keypad.illuminate(find, cols_with_multiplier[find][0], cols_with_multiplier[find][1], cols_with_multiplier[find][2])
                     
-                keypad.illuminate(find, cols_with_multiplier[find][0], cols_with_multiplier[find][1], cols_with_multiplier[find][2])
     if press_counter_on == True:
         press_countdown = press_countdown - 1
         if press_countdown <= 0:
@@ -213,6 +219,12 @@ while True:
 #             z = urequests.put(set_brightness_url, json = set_brightness_json, headers = {'Content-Type': 'application/json'})
 #             z.close()
             button_press_count = 0
-            
+    
+    screenoff_countdown = screenoff_countdown - 1
+    if screenoff_countdown <= 0:
+        screenoff = True
+        screenoff_countdown = 0
+        for find in range (0, NUM_PADS):
+            keypad.illuminate(find, 0, 0, 0)
     keypad.update()
     time.sleep(0.1)
