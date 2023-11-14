@@ -53,7 +53,6 @@ colour_index = 0
 power_turned_on = False
 button_timer_on = False
 
-# current_colors = [0, 0, 0]
 button_press_count = 0
 TIME_TO_NEXT_PRESS = 10
 press_countdown = TIME_TO_NEXT_PRESS
@@ -62,13 +61,12 @@ press_counter_on = False
 screenoff = False
 TIME_TO_SCREENOFF = 50
 screenoff_countdown = TIME_TO_SCREENOFF
+just_turned_on = False
 
-COL_BRIGHT_JUMP = 8
+COL_BRIGHT_JUMP = 8 # check if this stuff is needed
 col_multiplier = 1
 cols_with_multiplier = [0, 0, 0]
 current_button = 0
-
-# set_white(10, 0) = set_colour(128, 96, 16)
 
 color =[[0x00,0x00,0x00], # black
         [0x08,0x08,0x08], # dark grey
@@ -156,9 +154,6 @@ while True:
                 if button_states & 0x01 > 0:
                     print("Button Pressed is : " + str(find))
                     keypad.illuminate(button, 25, 25, 25)
-#                     current_colors[0] = color[find][0]
-#                     current_colors[1] = color[find][1]
-#                     current_colors[2] = color[find][2]
                     current_button = find
                             
                 button_states >>= 1
@@ -170,16 +165,19 @@ while True:
             if screenoff == False:            
                 button_press_count = button_press_count + 1
                 press_countdown = TIME_TO_NEXT_PRESS
-            screenoff = False            
+            else:            
+                screenoff = False
+                just_turned_on = True
             screenoff_countdown = TIME_TO_SCREENOFF
             if button_press_count > 1:
-#                 current_brightness = button_press_count
-                col_multiplier = col_multiplier + 1
-                if col_multiplier >= 8: # change this to > 8
-                    col_multiplier = 1
+                if just_turned_on == False:
+                    col_multiplier = col_multiplier + 1
+                    if col_multiplier >= 8: # change this to > 8
+                        col_multiplier = 1
             
             for find in range (0, NUM_PADS):
                 
+                # add loops here - this is stupid
                 cols_with_multiplier[find][0] = (color[find][0] * col_multiplier) - 1
                 cols_with_multiplier[find][1] = (color[find][1] * col_multiplier) - 1
                 cols_with_multiplier[find][2] = (color[find][2] * col_multiplier) - 1
@@ -190,7 +188,7 @@ while True:
                     cols_with_multiplier[find][1] = 0
                 if cols_with_multiplier[find][2] < 0:
                     cols_with_multiplier[find][2] = 0
-                if screenoff == False:                
+                if screenoff == False: # not needed               
                     keypad.illuminate(find, cols_with_multiplier[find][0], cols_with_multiplier[find][1], cols_with_multiplier[find][2])
                     
     if press_counter_on == True:
@@ -199,25 +197,25 @@ while True:
             print("number of times pressed: " + str(button_press_count))
             press_counter_on = False
             
+            if just_turned_on == False:
             # now send the request to bulbs
-            if power_turned_on == False:
-                power_turned_on = True
-                x = urequests.put(set_power_url, json = set_power_json, headers = {'Content-Type': 'application/json'})
-                x.close()
-                    
-            set_color_json['red'] = cols_with_multiplier[current_button][0]
-            set_color_json['green'] = cols_with_multiplier[current_button][1]
-            set_color_json['blue'] = cols_with_multiplier[current_button][2]
-            print("red:" + str(cols_with_multiplier[current_button][0]))
-            print("green:" + str(cols_with_multiplier[current_button][1]))
-            print("blue:" + str(cols_with_multiplier[current_button][2]))
-            y = urequests.put(set_color_url, json = set_color_json, headers = {'Content-Type': 'application/json'})
-            print(y)
-            y.close()
-            
-#             set_brightness_json['brightness'] = (button_press_count - 1) * BRIGHTNESS_JUMP
-#             z = urequests.put(set_brightness_url, json = set_brightness_json, headers = {'Content-Type': 'application/json'})
-#             z.close()
+                if power_turned_on == False:
+                    power_turned_on = True
+                    x = urequests.put(set_power_url, json = set_power_json, headers = {'Content-Type': 'application/json'})
+                    x.close()
+                        
+                set_color_json['red'] = cols_with_multiplier[current_button][0]
+                set_color_json['green'] = cols_with_multiplier[current_button][1]
+                set_color_json['blue'] = cols_with_multiplier[current_button][2]
+                print("red:" + str(cols_with_multiplier[current_button][0]))
+                print("green:" + str(cols_with_multiplier[current_button][1]))
+                print("blue:" + str(cols_with_multiplier[current_button][2]))
+                y = urequests.put(set_color_url, json = set_color_json, headers = {'Content-Type': 'application/json'})
+                print(y)
+                y.close()
+            else:
+                just_turned_on = False
+
             button_press_count = 0
     
     screenoff_countdown = screenoff_countdown - 1

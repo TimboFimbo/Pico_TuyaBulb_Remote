@@ -1,4 +1,4 @@
-# Pico_TuyaBulb_Remote
+# Pico TuyaBulb Remote
 For controlling a Tuya SmartLight server, using a Raspberry Pi Pico and RGB Keypad
 
 This application will change the color and brightness of Tuya Smart Bulbs. In order to use it you will need the following:
