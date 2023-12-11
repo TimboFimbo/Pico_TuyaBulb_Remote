@@ -15,35 +15,45 @@ import urequests
 # Change the IP addresses of the endpoints to that of your server
 ssid = 'SSID HERE'
 password = 'PASSWORD HERE'
-set_color_url = 'http://192.168.0.119:8000/test_set_color'
-set_power_url = 'http://192.168.0.119:8000/test_set_power'
-set_brightness_url = 'http://192.168.0.119:8000/set_brightness'
+set_color_url = 'http://192.168.0.120:8000/test_set_color'
+set_power_url = 'http://192.168.0.120:8000/test_set_power'
+set_brightness_url = 'http://192.168.0.120:8000/set_brightness'
 
 keypad = picokeypad.PicoKeypad()
 keypad.set_brightness(1.0)
 
-# Connects to Wi-Fi network (update to loop and remove hard-coded colors)
+# Connects to Wi-Fi network
+CON_SLEEP_TIME = 0.25
+con_colors = [[0x30, 0x00, 0xff], # color 0
+              [0x00, 0xc0, 0xc0], # color 1
+              [0xff, 0x2c, 0x2c], # color 2
+              [0x00, 0xff, 0x30], # color 3
+              [0x00, 0x00, 0x00]] # black
+
+con_first_but = 3
+con_second_but = 0
+print('Waiting for connection...')
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
 wlan.connect(ssid, password)
+
 while wlan.isconnected() == False:
-    print('Waiting for connection...')
-    keypad.illuminate(3, 0x00, 0x00, 0x00)
-    keypad.illuminate(0, 0x30, 0x00, 0xff)
+    keypad.illuminate(con_first_but,
+                      con_colors[4][0],
+                      con_colors[4][1],
+                      con_colors[4][2])
+    keypad.illuminate(con_second_but,
+                      con_colors[con_second_but][0],
+                      con_colors[con_second_but][1],
+                      con_colors[con_second_but][2])
     keypad.update()
-    time.sleep(0.25)
-    keypad.illuminate(0, 0x00, 0x00, 0x00)
-    keypad.illuminate(1, 0x00, 0xc0, 0xc0)
-    keypad.update()
-    time.sleep(0.25)
-    keypad.illuminate(1, 0x00, 0x00, 0x00)
-    keypad.illuminate(2, 0xff, 0x2c, 0x2c)
-    keypad.update()
-    time.sleep(0.25)
-    keypad.illuminate(2, 0x00, 0x00, 0x00)
-    keypad.illuminate(3, 0x00, 0xff, 0x30)
-    keypad.update()
-    time.sleep(0.25)
+    con_first_but = con_first_but + 1
+    if con_first_but > 3:
+        con_first_but = 0
+    con_second_but = con_second_but + 1
+    if con_second_but > 3:
+        con_second_but = 0
+    time.sleep(CON_SLEEP_TIME)    
 ip = wlan.ifconfig()[0]
 print(f'Connected on {ip}')
 
@@ -108,6 +118,7 @@ set_color_json = {
     'white_lamp': True,
     'wood_lamp': True,
     'black_lamp': True,
+    'strip_light': True,
     'red': 0,
     'green': 0,
     'blue': 255,
@@ -118,6 +129,7 @@ set_power_json = {
   'white_lamp': True,
   'wood_lamp': True,
   'black_lamp': True,
+  'strip_light': True,
   'power': True,
   'no_wait': False
 }
@@ -127,6 +139,7 @@ set_brightness_json = {
   'white_lamp': True,
   'wood_lamp': True,
   'black_lamp': False,
+  'strip_light': True,
   'brightness': 50,
   'no_wait': True
 }
