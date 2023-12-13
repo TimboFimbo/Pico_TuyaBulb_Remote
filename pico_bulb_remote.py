@@ -1,7 +1,6 @@
 # Connects to Wi-Fi
-# Sends Rest API messages over network
-# to Tuya smart light server
-# Adding degrees to white to first four buttons
+# Sends Rest API messages over network to Tuya smart light server
+# Get server at https://github.com/TimboFimbo/TuyaSmartBulbs_API
 
 import time
 import picokeypad
@@ -15,19 +14,19 @@ import urequests
 # Change the IP addresses of the endpoints to that of your server
 ssid = 'SSID HERE'
 password = 'PASSWORD HERE'
-set_color_url = 'http://192.168.0.120:8000/test_set_color'
-set_power_url = 'http://192.168.0.120:8000/test_set_power'
-set_brightness_url = 'http://192.168.0.120:8000/set_brightness'
+set_colour_url = 'http://192.168.0.120:8000/set_colour'
+set_power_url = 'http://192.168.0.120:8000/set_power'
+set_brightness_url = 'http://192.168.0.120:8000/brightness'
 
 keypad = picokeypad.PicoKeypad()
 keypad.set_brightness(1.0)
 
 # Connects to Wi-Fi network
 CON_SLEEP_TIME = 0.25
-con_colors = [[0x30, 0x00, 0xff], # color 0
-              [0x00, 0xc0, 0xc0], # color 1
-              [0xff, 0x2c, 0x2c], # color 2
-              [0x00, 0xff, 0x30], # color 3
+con_colours = [[0x30, 0x00, 0xff], # colour 0
+              [0x00, 0xc0, 0xc0], # colour 1
+              [0xff, 0x2c, 0x2c], # colour 2
+              [0x00, 0xff, 0x30], # colour 3
               [0x00, 0x00, 0x00]] # black
 
 con_first_but = 3
@@ -39,13 +38,13 @@ wlan.connect(ssid, password)
 
 while wlan.isconnected() == False:
     keypad.illuminate(con_first_but,
-                      con_colors[4][0],
-                      con_colors[4][1],
-                      con_colors[4][2])
+                      con_colours[4][0],
+                      con_colours[4][1],
+                      con_colours[4][2])
     keypad.illuminate(con_second_but,
-                      con_colors[con_second_but][0],
-                      con_colors[con_second_but][1],
-                      con_colors[con_second_but][2])
+                      con_colours[con_second_but][0],
+                      con_colours[con_second_but][1],
+                      con_colours[con_second_but][2])
     keypad.update()
     con_first_but = con_first_but + 1
     if con_first_but > 3:
@@ -78,7 +77,7 @@ col_multiplier = 1
 cols_with_multiplier = [0, 0, 0]
 current_button = 0
 
-color =[[0x00,0x00,0x00], # black
+colour =[[0x00,0x00,0x00], # black
         [0x08,0x08,0x08], # dark grey
         [0x10,0x10,0x10], # light grey
         [0x20,0x20,0x20], # white
@@ -113,35 +112,40 @@ cols_with_multiplier =[
         [0x20,0x20,0x00], # yellow
         [0x20,0x10,0x00]] # orange
 
-set_color_json = {
-    'den_light': True,            
-    'white_lamp': True,
-    'wood_lamp': True,
-    'black_lamp': True,
-    'strip_light': True,
-    'red': 0,
-    'green': 0,
-    'blue': 255,
-    'no_wait': False}
+# Names here should match those in the API
+bulb_toggles = [
+    {
+      "name": "White Lamp",
+      "toggle": True
+    },
+    {
+      "name": "Wood Lamp",
+      "toggle": True
+    },
+    {
+      "name": "Black Lamp",
+      "toggle": True
+    },
+    {
+      "name": "Strip Light",
+      "toggle": True
+    },
+    {
+      "name": "Den Light",
+      "toggle": True
+    }      
+]    
 
 set_power_json = {
-  'den_light': True,
-  'white_lamp': True,
-  'wood_lamp': True,
-  'black_lamp': True,
-  'strip_light': True,
-  'power': True,
-  'no_wait': False
+    "power": True,
+    "toggles": bulb_toggles   
 }
 
-set_brightness_json = {
-  'den_light': True,
-  'white_lamp': True,
-  'wood_lamp': True,
-  'black_lamp': False,
-  'strip_light': True,
-  'brightness': 50,
-  'no_wait': True
+set_colour_json = {
+    "red": 0,
+    "green": 0,
+    "blue": 0,
+    "toggles": bulb_toggles 
 }
 
 NUM_PADS = keypad.get_num_pads()
@@ -149,7 +153,7 @@ print("num pads :")
 print(NUM_PADS)
 
 for find in range (0, NUM_PADS):
-    keypad.illuminate(find, color[find][0], color[find][1], color[find][2])
+    keypad.illuminate(find, colour[find][0], colour[find][1], colour[find][2])
             
 global c
 
@@ -191,9 +195,9 @@ while True:
             for find in range (0, NUM_PADS):
                 
                 # add loops here - this is stupid
-                cols_with_multiplier[find][0] = (color[find][0] * col_multiplier) - 1
-                cols_with_multiplier[find][1] = (color[find][1] * col_multiplier) - 1
-                cols_with_multiplier[find][2] = (color[find][2] * col_multiplier) - 1
+                cols_with_multiplier[find][0] = (colour[find][0] * col_multiplier) - 1
+                cols_with_multiplier[find][1] = (colour[find][1] * col_multiplier) - 1
+                cols_with_multiplier[find][2] = (colour[find][2] * col_multiplier) - 1
                 
                 if cols_with_multiplier[find][0] < 0: # possible change to > 255
                     cols_with_multiplier[find][0] = 0
@@ -217,13 +221,13 @@ while True:
                     x = urequests.put(set_power_url, json = set_power_json, headers = {'Content-Type': 'application/json'})
                     x.close()
                         
-                set_color_json['red'] = cols_with_multiplier[current_button][0]
-                set_color_json['green'] = cols_with_multiplier[current_button][1]
-                set_color_json['blue'] = cols_with_multiplier[current_button][2]
+                set_colour_json['red'] = cols_with_multiplier[current_button][0]
+                set_colour_json['green'] = cols_with_multiplier[current_button][1]
+                set_colour_json['blue'] = cols_with_multiplier[current_button][2]
                 print("red:" + str(cols_with_multiplier[current_button][0]))
                 print("green:" + str(cols_with_multiplier[current_button][1]))
                 print("blue:" + str(cols_with_multiplier[current_button][2]))
-                y = urequests.put(set_color_url, json = set_color_json, headers = {'Content-Type': 'application/json'})
+                y = urequests.put(set_colour_url, json = set_colour_json, headers = {'Content-Type': 'application/json'})
                 print(y)
                 y.close()
             else:
