@@ -1,7 +1,7 @@
 # Pico TuyaBulb Remote
 For controlling a Tuya SmartLight server, using a Raspberry Pi Pico and RGB Keypad
 
-This application will change the color and brightness of Tuya Smart Bulbs. In order to use it you will need the following:
+This application will change the color and brightness of Tuya Smart Bulbs, as well as trigger multi-bulb scenes. In order to use it you will need the following:
 
 - A copy of the Smart Light server, found at https://github.com/TimboFimbo/TuyaSmartBulbs_API (still a work in progress)
 - Something to run the server on (such as a Raspberry Pi or old PC)
@@ -14,6 +14,6 @@ Once all set up and running, the keypad should light up with various colors. Ign
 
 Notes and TODOs:
 
-- I've started adding the ability to trigger scenes, using the top row buttons. For example, button 3 starts the Xmas Scene, with a 10 minute wait between colours changes. I'm going to add the ability to start the scenes with different timings, using multiple button presses.
+- I've started adding the ability to trigger scenes, using the top row buttons. For example, button 3 starts the Xmas Scene, with a 60 minute wait time between colour changes. Pressing the button multiple times cycles through wait times - they're' currently set to 60 mins, 10 mins, then 10 secs, but this may change.
 
 - Although everything works, it was started as a simple script to light up the keypad buttons, but is getting more complex over time. It's not unreadable, but it needs some tidying up before much more is added.

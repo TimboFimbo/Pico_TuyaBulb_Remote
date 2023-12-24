@@ -22,7 +22,8 @@ start_xmas_url = 'http://192.168.0.120:8000/start_xmas_scene'
 keypad = picokeypad.PicoKeypad()
 keypad.set_brightness(1.0)
 
-# Connects to Wi-Fi network
+# ******** Connect to Wi-Fi network ********
+
 CON_SLEEP_TIME = 0.25
 con_colours = [[0x30, 0x00, 0xff], # colour 0
               [0x00, 0xc0, 0xc0], # colour 1
@@ -57,6 +58,8 @@ while wlan.isconnected() == False:
 ip = wlan.ifconfig()[0]
 print(f'Connected on {ip}')
 
+# ******** Variables ********
+
 lit = 0
 last_button_states = 0
 colour_index = 0
@@ -79,12 +82,18 @@ cols_with_multiplier = [0, 0, 0]
 current_button = 0
 
 # for special functions and scenes
-TIME_TO_SPECIAL_FLASH = 10
-flash_countdown = TIME_TO_SPECIAL_FLASH
+SCENE_BUTTON_TIMES = [20, 10, 3] # how fast the buttons flash - try to set these automatically
+SCENE_WAIT_TIMES = [3600, 600, 10] # sets scene timers to 1hr | 10mins | 10secs
+current_wait_time = 0
+
+flash_countdown = SCENE_BUTTON_TIMES[current_wait_time]
 XMAS_BUTTON = 3
 xmas_cur_colour = 0
 xmas_scene_triggered = False
 
+# ******** Colour Lists ********
+
+# these values are constant
 colour =[[0x00,0x00,0x00], # black
         [0x08,0x08,0x08], # dark grey
         [0x10,0x10,0x10], # light grey
@@ -102,6 +111,7 @@ colour =[[0x00,0x00,0x00], # black
         [0x20,0x20,0x00], # yellow
         [0x20,0x10,0x00]] # orange
 
+# these ones change as you adjust brighness
 cols_with_multiplier =[
         [0x00,0x00,0x00], # black
         [0x08,0x08,0x08], # dark grey
@@ -120,14 +130,15 @@ cols_with_multiplier =[
         [0x20,0x20,0x00], # yellow
         [0x20,0x10,0x00]] # orange
 
-# Special Colours
-
+# special Colours
 xmas_scene_cols = [
     [0x50,0x00,0x00], # red
     [0x00,0x50,0x00] # green
     ]
 
-# Names here should match those in the API
+# ******** JSON Requests ********
+
+# names here should match those in the API
 bulb_toggles = [
     {
       "name": "Black Lamp",
@@ -167,7 +178,11 @@ set_colour_json = {
     "toggles": bulb_toggles 
 }
 
-start_xmas_json = {"wait_time" : 600}
+start_xmas_json = {
+    "wait_time" : SCENE_WAIT_TIMES[0]
+}
+
+# ******** Initial illumination ********
 
 NUM_PADS = keypad.get_num_pads()
 print("num pads :")
@@ -176,7 +191,9 @@ print(NUM_PADS)
 for find in range (0, NUM_PADS):
     keypad.illuminate(find, colour[find][0], colour[find][1], colour[find][2])
 
-global c
+global c # what is this for?
+
+# ******** Check for Button Presses ********
 
 while True:
     button_states = keypad.get_button_states()
@@ -209,12 +226,20 @@ while True:
                 screenoff = False
                 just_turned_on = True
             screenoff_countdown = TIME_TO_SCREENOFF
+            
+            # after all the checks, this is where the button actions happen
             if button_press_count > 1:
                 if just_turned_on == False:
-                    col_multiplier = col_multiplier + 1
-                    if col_multiplier > 8:
-                        col_multiplier = 1
-            
+                    if xmas_scene_triggered == True:
+                        current_wait_time = current_wait_time + 1
+                        if current_wait_time >= len(SCENE_WAIT_TIMES): current_wait_time = 0
+                        start_xmas_json["wait_time"] = SCENE_WAIT_TIMES[current_wait_time]
+                    else:
+                        col_multiplier = col_multiplier + 1
+                        if col_multiplier > 8: col_multiplier = 1 # check why > 8
+
+# ******** Light Buttons ********
+
             for find in range (0, NUM_PADS):
                 
                 # add loops here - this is stupid
@@ -230,7 +255,7 @@ while True:
                     cols_with_multiplier[find][2] = 0
                 if screenoff == False: # not needed
                     
-                    if find != XMAS_BUTTON:
+                    if find != XMAS_BUTTON: # TODO - switch this around, to have colour change last
                         keypad.illuminate(find,
                                           cols_with_multiplier[find][0],
                                           cols_with_multiplier[find][1],
@@ -239,7 +264,9 @@ while True:
                         keypad.illuminate(find, xmas_scene_cols[xmas_cur_colour][0],
                                           xmas_scene_cols[xmas_cur_colour][1],
                                           xmas_scene_cols[xmas_cur_colour][2])
-                    
+
+# ******** Perform Actions After Button Release ********
+
     if press_counter_on == True:
         press_countdown = press_countdown - 1
         if press_countdown <= 0:
@@ -272,7 +299,9 @@ while True:
                 just_turned_on = False
 
             button_press_count = 0
-    
+ 
+# ******** Countdowns ********
+ 
     screenoff_countdown = screenoff_countdown - 1
     if screenoff_countdown <= 0:
         screenoff = True
@@ -284,7 +313,7 @@ while True:
     flash_countdown = flash_countdown - 1
     if flash_countdown <= 0:
         xmas_cur_colour = 1 if xmas_cur_colour == 0 else 0
-        flash_countdown = TIME_TO_SPECIAL_FLASH
+        flash_countdown = SCENE_BUTTON_TIMES[current_wait_time]
         if screenoff == False:
             keypad.illuminate(XMAS_BUTTON, xmas_scene_cols[xmas_cur_colour][0],
                               xmas_scene_cols[xmas_cur_colour][1],
