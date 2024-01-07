@@ -64,6 +64,9 @@ print(f'Connected on {ip}')
 
 # ******** Variables ********
 
+# To change states for scenes or special functions
+program_state = "normal"
+
 lit = 0
 last_button_states = 0
 colour_index = 0
@@ -98,6 +101,17 @@ xmas_scene_triggered = False
 RANDOM_BUTTON = 2
 random_cur_colour = 4
 random_scene_triggered = False
+
+MULTI_BUTTON = 1
+multi_cur_colour = 0
+multi_scene_triggered = False
+
+CANCEL_BUTTON = 0
+UNUSED_BUTTONS = [1, 2]
+PROCEED_BUTTON = 3
+CHOSEN_BUTTON_BRIGHT = 7
+CHOSEN_BUTTON_DARK = 5
+colours_chosen = []
 
 # ******** Colour Lists ********
 
@@ -195,6 +209,23 @@ start_random_json = {
     "toggles": bulb_toggles
 }
 
+start_multi_json = {
+  "bulb_lists": [
+    [
+      "Den Light",
+      "Chair Light",
+      "Sofa Light"
+    ],
+    [
+      "White Lamp",
+      "Wood Lamp",
+      "Black Lamp"
+    ]
+  ],
+  "colour_list": [],
+  "wait_time": 600
+}
+
 # ******** Initial illumination ********
 
 NUM_PADS = keypad.get_num_pads()
@@ -209,143 +240,248 @@ global c # what is this for?
 # ******** Check for Button Presses ********
 
 while True:
-    button_states = keypad.get_button_states()
 
-    if last_button_states != button_states:
-        last_button_states = button_states
+    # States are as follows:
+    # "normal" - standard state for choosing colours and scenes
+    # "colour_chooser" - turn colours on or off for scenes
+    # "speed_chooser" - choose a wait time for scenes
 
-        if button_states > 0:
-            button = 0
-            
-            for find in range (0, NUM_PADS):
-                # check if this button is pressed and no other buttons are pressed
-                if button_states & 0x01 > 0:
-                    print("Button Pressed is : " + str(find))
-                    keypad.illuminate(button, 25, 25, 25)
-                    current_button = find
-                    # for special scenes
-                    if find == XMAS_BUTTON: xmas_scene_triggered = True
-                    if find == RANDOM_BUTTON: random_scene_triggered = True
+# State: normal
+
+    if program_state == "normal":
+
+        button_states = keypad.get_button_states()
+
+        if last_button_states != button_states:
+            last_button_states = button_states
+
+            if button_states > 0:
+                button = 0
+                
+                for find in range (0, NUM_PADS):
+                    # check if this button is pressed and no other buttons are pressed
+                    if button_states & 0x01 > 0:
+                        print("Button Pressed is : " + str(find))
+                        keypad.illuminate(button, 25, 25, 25)
+                        current_button = find
+                        # for special scenes
+                        if find == XMAS_BUTTON: xmas_scene_triggered = True
+                        if find == RANDOM_BUTTON: random_scene_triggered = True
+                        if find == MULTI_BUTTON: program_state = "colour_chooser"
+                                
+                    button_states >>= 1
+                    button += 1
+            else:
+                if press_counter_on == False:
+                    press_counter_on = True
+                    button_press_count = 0
+                if screenoff == False:            
+                    button_press_count = button_press_count + 1
+                    press_countdown = TIME_TO_NEXT_PRESS
+                else:            
+                    screenoff = False
+                    just_turned_on = True
+                screenoff_countdown = TIME_TO_SCREENOFF
+                
+                # after all the checks, this is where the button actions happen
+                if button_press_count > 1 and program_state == "normal":
+                    if just_turned_on == False:
+                        if xmas_scene_triggered == True or random_scene_triggered == True:
+                            current_wait_time = current_wait_time + 1
+                            if current_wait_time >= len(SCENE_WAIT_TIMES): current_wait_time = 0
+                            start_xmas_json["wait_time"] = SCENE_WAIT_TIMES[current_wait_time]
+                            start_random_json["wait_time"] = SCENE_WAIT_TIMES[current_wait_time]
+                        else:
+                            col_multiplier = col_multiplier + 1
+                            if col_multiplier > 8: col_multiplier = 1 # check why > 8
+
+    # ******** Light Buttons ********
+
+                for find in range (0, NUM_PADS):
+                    
+                    # add loops here - this is stupid
+                    cols_with_multiplier[find][0] = (colour[find][0] * col_multiplier) - 1
+                    cols_with_multiplier[find][1] = (colour[find][1] * col_multiplier) - 1
+                    cols_with_multiplier[find][2] = (colour[find][2] * col_multiplier) - 1
+                    
+                    if cols_with_multiplier[find][0] < 0: # possible change to > 255
+                        cols_with_multiplier[find][0] = 0
+                    if cols_with_multiplier[find][1] < 0:
+                        cols_with_multiplier[find][1] = 0
+                    if cols_with_multiplier[find][2] < 0:
+                        cols_with_multiplier[find][2] = 0
+                    if screenoff == False: # not needed
                             
-                button_states >>= 1
-                button += 1
-        else:
-            if press_counter_on == False:
-                press_counter_on = True
+                        if find == XMAS_BUTTON:
+                            keypad.illuminate(find, xmas_scene_cols[xmas_cur_colour][0],
+                                            xmas_scene_cols[xmas_cur_colour][1],
+                                            xmas_scene_cols[xmas_cur_colour][2])
+                        elif find == RANDOM_BUTTON:
+                            keypad.illuminate(find, colour[random_cur_colour][0],
+                                            colour[random_cur_colour][1],
+                                            colour[random_cur_colour][2])
+                        else:
+                            keypad.illuminate(find,
+                                            cols_with_multiplier[find][0],
+                                            cols_with_multiplier[find][1],
+                                            cols_with_multiplier[find][2])
+
+    # ******** Perform Actions After Button Release ********
+
+        if press_counter_on == True:
+            press_countdown = press_countdown - 1
+            if press_countdown <= 0:
+                print("number of times pressed: " + str(button_press_count))
+                press_counter_on = False
+                
+                if just_turned_on == False:
+                # now send the request to bulbs
+                    if power_turned_on == False:
+                        power_turned_on = True
+                        x = urequests.put(set_power_url, json = set_power_json, headers = {'Content-Type': 'application/json'})
+                        x.close()
+                            
+                    set_colour_json['red'] = cols_with_multiplier[current_button][0]
+                    set_colour_json['green'] = cols_with_multiplier[current_button][1]
+                    set_colour_json['blue'] = cols_with_multiplier[current_button][2]
+                    print("red:" + str(cols_with_multiplier[current_button][0]))
+                    print("green:" + str(cols_with_multiplier[current_button][1]))
+                    print("blue:" + str(cols_with_multiplier[current_button][2]))
+                    
+                    if xmas_scene_triggered == True:
+                        y = urequests.post(start_xmas_url, json = start_xmas_json, headers = {'Content-Type': 'application/json'})
+                        xmas_scene_triggered = False
+                        print('xmas scene triggered')
+                    elif random_scene_triggered == True:
+                        y = urequests.post(start_random_url, json = start_random_json, headers = {'Content-Type': 'application/json'})
+                        random_scene_triggered = False
+                        print('random scene triggered')
+                    else:
+                        y = urequests.put(set_colour_url, json = set_colour_json, headers = {'Content-Type': 'application/json'})
+                    print(y)
+                    y.close()
+                else:
+                    just_turned_on = False
+
                 button_press_count = 0
-            if screenoff == False:            
-                button_press_count = button_press_count + 1
-                press_countdown = TIME_TO_NEXT_PRESS
-            else:            
+    
+    # ******** Countdowns ********
+    
+        screenoff_countdown = screenoff_countdown - 1
+        if screenoff_countdown <= 0:
+            screenoff = True
+            screenoff_countdown = 0
+            for find in range (0, NUM_PADS):
+                keypad.illuminate(find, 0, 0, 0)
+        
+        # for special buttons    
+        flash_countdown = flash_countdown - 1
+        if flash_countdown <= 0:
+            xmas_cur_colour = 1 if xmas_cur_colour == 0 else 0
+            random_cur_colour = random.randrange(4, len(colour))
+            
+            flash_countdown = SCENE_BUTTON_TIMES[current_wait_time]
+            if screenoff == False:
+                keypad.illuminate(XMAS_BUTTON, xmas_scene_cols[xmas_cur_colour][0],
+                                xmas_scene_cols[xmas_cur_colour][1],
+                                xmas_scene_cols[xmas_cur_colour][2])
+                keypad.illuminate(RANDOM_BUTTON, colour[random_cur_colour][0],
+                                colour[random_cur_colour][1],
+                                colour[random_cur_colour][2])
+                
+        keypad.update()
+        time.sleep(0.1)      
+
+# State: colour_chooser
+
+    elif program_state == "colour_chooser":
+
+        button_states = keypad.get_button_states()
+
+        if last_button_states != button_states:
+            last_button_states = button_states
+
+            if button_states > 0:
+                button = 0
+                
+                for find in range (0, NUM_PADS):
+                    # check if this button is pressed and no other buttons are pressed
+                    if button_states & 0x01 > 0:
+                        print("Button Pressed is : " + str(find))
+                        keypad.illuminate(button, 25, 25, 25)
+                        current_button = find
+                        if find == PROCEED_BUTTON and len(colours_chosen) >= 2: 
+                            program_state = "speed_chooser"
+                        elif find == CANCEL_BUTTON: 
+                            program_state = "normal"
+                        else:
+                            if find in colours_chosen:
+                                colours_chosen.remove(find)
+                            else:
+                                colours_chosen.append(find)
+                                
+                    button_states >>= 1
+                    button += 1
+            else:          
                 screenoff = False
                 just_turned_on = True
-            screenoff_countdown = TIME_TO_SCREENOFF
-            
-            # after all the checks, this is where the button actions happen
-            if button_press_count > 1:
-                if just_turned_on == False:
-                    if xmas_scene_triggered == True or random_scene_triggered == True:
-                        current_wait_time = current_wait_time + 1
-                        if current_wait_time >= len(SCENE_WAIT_TIMES): current_wait_time = 0
-                        start_xmas_json["wait_time"] = SCENE_WAIT_TIMES[current_wait_time]
-                        start_random_json["wait_time"] = SCENE_WAIT_TIMES[current_wait_time]
-                    else:
-                        col_multiplier = col_multiplier + 1
-                        if col_multiplier > 8: col_multiplier = 1 # check why > 8
+                screenoff_countdown = TIME_TO_SCREENOFF
+                    
+    # ******** Light Buttons ********
 
-# ******** Light Buttons ********
+                for find in range (0, NUM_PADS):
 
-            for find in range (0, NUM_PADS):
-                
-                # add loops here - this is stupid
-                cols_with_multiplier[find][0] = (colour[find][0] * col_multiplier) - 1
-                cols_with_multiplier[find][1] = (colour[find][1] * col_multiplier) - 1
-                cols_with_multiplier[find][2] = (colour[find][2] * col_multiplier) - 1
-                
-                if cols_with_multiplier[find][0] < 0: # possible change to > 255
-                    cols_with_multiplier[find][0] = 0
-                if cols_with_multiplier[find][1] < 0:
-                    cols_with_multiplier[find][1] = 0
-                if cols_with_multiplier[find][2] < 0:
-                    cols_with_multiplier[find][2] = 0
-                if screenoff == False: # not needed
-                        
-                    if find == XMAS_BUTTON:
-                        keypad.illuminate(find, xmas_scene_cols[xmas_cur_colour][0],
-                                          xmas_scene_cols[xmas_cur_colour][1],
-                                          xmas_scene_cols[xmas_cur_colour][2])
-                    elif find == RANDOM_BUTTON:
-                        keypad.illuminate(find, colour[random_cur_colour][0],
-                                          colour[random_cur_colour][1],
-                                          colour[random_cur_colour][2])
-                    else:
-                        keypad.illuminate(find,
-                                          cols_with_multiplier[find][0],
-                                          cols_with_multiplier[find][1],
-                                          cols_with_multiplier[find][2])
-
-# ******** Perform Actions After Button Release ********
-
-    if press_counter_on == True:
-        press_countdown = press_countdown - 1
-        if press_countdown <= 0:
-            print("number of times pressed: " + str(button_press_count))
-            press_counter_on = False
-            
-            if just_turned_on == False:
-            # now send the request to bulbs
-                if power_turned_on == False:
-                    power_turned_on = True
-                    x = urequests.put(set_power_url, json = set_power_json, headers = {'Content-Type': 'application/json'})
-                    x.close()
-                        
-                set_colour_json['red'] = cols_with_multiplier[current_button][0]
-                set_colour_json['green'] = cols_with_multiplier[current_button][1]
-                set_colour_json['blue'] = cols_with_multiplier[current_button][2]
-                print("red:" + str(cols_with_multiplier[current_button][0]))
-                print("green:" + str(cols_with_multiplier[current_button][1]))
-                print("blue:" + str(cols_with_multiplier[current_button][2]))
-                
-                if xmas_scene_triggered == True:
-                    y = urequests.post(start_xmas_url, json = start_xmas_json, headers = {'Content-Type': 'application/json'})
-                    xmas_scene_triggered = False
-                    print('xmas scene triggered')
-                elif random_scene_triggered == True:
-                    y = urequests.post(start_random_url, json = start_random_json, headers = {'Content-Type': 'application/json'})
-                    random_scene_triggered = False
-                    print('random scene triggered')
-                else:
-                    y = urequests.put(set_colour_url, json = set_colour_json, headers = {'Content-Type': 'application/json'})
-                print(y)
-                y.close()
-            else:
-                just_turned_on = False
-
-            button_press_count = 0
- 
-# ******** Countdowns ********
- 
-    screenoff_countdown = screenoff_countdown - 1
-    if screenoff_countdown <= 0:
-        screenoff = True
-        screenoff_countdown = 0
-        for find in range (0, NUM_PADS):
-            keypad.illuminate(find, 0, 0, 0)
+                    for i in range(3):
+                        if find in colours_chosen:
+                            cols_with_multiplier[find][i] = int(colour[find][i] * CHOSEN_BUTTON_BRIGHT)
+                        else:
+                            cols_with_multiplier[find][i] = int(colour[find][i] / CHOSEN_BUTTON_DARK)
+                            
+                        if find == PROCEED_BUTTON:
+                            keypad.illuminate(find, colour[12][0] * CHOSEN_BUTTON_BRIGHT,
+                                            colour[12][1] * CHOSEN_BUTTON_BRIGHT,
+                                            colour[12][2] * CHOSEN_BUTTON_BRIGHT) # green
+                        elif find == CANCEL_BUTTON:
+                            keypad.illuminate(find, colour[4][0] * CHOSEN_BUTTON_BRIGHT,
+                                            colour[4][1] * CHOSEN_BUTTON_BRIGHT,
+                                            colour[4][2] * CHOSEN_BUTTON_BRIGHT) # red
+                        elif find in UNUSED_BUTTONS:
+                            keypad.illuminate(find, 0, 0, 0) # black
+                        else:
+                            keypad.illuminate(find,
+                                            cols_with_multiplier[find][0],
+                                            cols_with_multiplier[find][1],
+                                            cols_with_multiplier[find][2])
+                            
+        # ******** Countdowns ********
     
-    # for special buttons    
-    flash_countdown = flash_countdown - 1
-    if flash_countdown <= 0:
-        xmas_cur_colour = 1 if xmas_cur_colour == 0 else 0
-        random_cur_colour = random.randrange(4, len(colour))
+        screenoff_countdown = screenoff_countdown - 1
+        if screenoff_countdown <= 0:
+            screenoff = True
+            screenoff_countdown = 0
+            for find in range (0, NUM_PADS):
+                keypad.illuminate(find, 0, 0, 0)
         
-        flash_countdown = SCENE_BUTTON_TIMES[current_wait_time]
-        if screenoff == False:
-            keypad.illuminate(XMAS_BUTTON, xmas_scene_cols[xmas_cur_colour][0],
-                              xmas_scene_cols[xmas_cur_colour][1],
-                              xmas_scene_cols[xmas_cur_colour][2])
-            keypad.illuminate(RANDOM_BUTTON, colour[random_cur_colour][0],
-                              colour[random_cur_colour][1],
-                              colour[random_cur_colour][2])
+        # for special buttons    
+        # flash_countdown = flash_countdown - 1
+        # if flash_countdown <= 0:
+        #     xmas_cur_colour = 1 if xmas_cur_colour == 0 else 0
+        #     random_cur_colour = random.randrange(4, len(colour))
             
-    keypad.update()
-    time.sleep(0.1)
+        #     flash_countdown = SCENE_BUTTON_TIMES[current_wait_time]
+        #     if screenoff == False:
+        #         keypad.illuminate(XMAS_BUTTON, xmas_scene_cols[xmas_cur_colour][0],
+        #                         xmas_scene_cols[xmas_cur_colour][1],
+        #                         xmas_scene_cols[xmas_cur_colour][2])
+        #         keypad.illuminate(RANDOM_BUTTON, colour[random_cur_colour][0],
+        #                         colour[random_cur_colour][1],
+        #                         colour[random_cur_colour][2])
+                
+        keypad.update()
+        time.sleep(0.1)      
+                            
+# start_multi_json["colour_list"].append({
+#     "red": colour[find]["red"],
+#     "green": colour[find]["green"],
+#     "blue": colour[find]["blue"]
+# })
