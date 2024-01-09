@@ -17,11 +17,12 @@ import random
 ssid = 'SSID HERE'
 password = 'PASSWORD HERE'
 base_url = 'http://192.168.0.116:8000'
-set_colour_url = 'http://192.168.0.116:8000/set_colour'
-set_power_url = 'http://192.168.0.116:8000/set_power'
-set_brightness_url = 'http://192.116.0.120:8000/brightness'
-start_xmas_url = 'http://192.168.0.116:8000/start_xmas_scene'
+set_colour_url = base_url + '/set_colour'
+set_power_url = base_url + '/set_power'
+set_brightness_url = base_url + '/brightness'
+start_xmas_url = base_url + '/start_xmas_scene'
 start_random_url = base_url + '/start_random_colour_scene'
+start_multi_url = base_url + '/start_multi_colour_scene'
 
 keypad = picokeypad.PicoKeypad()
 keypad.set_brightness(1.0)
@@ -106,12 +107,20 @@ MULTI_BUTTON = 1
 multi_cur_colour = 0
 multi_scene_triggered = False
 
+# Colour chooser state
 CANCEL_BUTTON = 0
 UNUSED_BUTTONS = [1, 2]
 PROCEED_BUTTON = 3
 CHOSEN_BUTTON_BRIGHT = 7
 CHOSEN_BUTTON_DARK = 5
 colours_chosen = []
+
+# Speed chooser state
+SPEED_BUTTONS = [0, 4, 8, 12]
+LIT_TIMES = [10, 6, 3, 1]
+lit_buttons = [0, 4, 8, 12]
+dark_buttons = [3, 7, 11, 15]
+time_til_lit = [10, 6, 3, 1]
 
 # ******** Colour Lists ********
 
@@ -124,7 +133,7 @@ colour =[[0x00,0x00,0x00], # black
         [0x20,0x00,0x10], # rose
         [0x20,0x00,0x20], # magenta
         [0x10,0x00,0x20], # violet
-        [0x00,0x00,0x10], # blue
+        [0x00,0x00,0x20], # blue
         [0x00,0x10,0x20], # azure
         [0x00,0x20,0x20], # cyan
         [0x00,0x20,0x10], # spring green
@@ -143,7 +152,7 @@ cols_with_multiplier =[
         [0x20,0x00,0x10], # rose
         [0x20,0x00,0x20], # magenta
         [0x10,0x00,0x20], # violet
-        [0x00,0x00,0x10], # blue
+        [0x00,0x00,0x20], # blue
         [0x00,0x10,0x20], # azure
         [0x00,0x20,0x20], # cyan
         [0x00,0x20,0x10], # spring green
@@ -246,7 +255,7 @@ while True:
     # "colour_chooser" - turn colours on or off for scenes
     # "speed_chooser" - choose a wait time for scenes
 
-# State: normal
+# ******** State: normal ********
 
     if program_state == "normal":
 
@@ -392,9 +401,11 @@ while True:
         keypad.update()
         time.sleep(0.1)      
 
-# State: colour_chooser
+# ******** State: colour_chooser ********
 
     elif program_state == "colour_chooser":
+
+        start_multi_json["colour_list"].clear()
 
         button_states = keypad.get_button_states()
 
@@ -410,8 +421,17 @@ while True:
                         print("Button Pressed is : " + str(find))
                         keypad.illuminate(button, 25, 25, 25)
                         current_button = find
-                        if find == PROCEED_BUTTON and len(colours_chosen) >= 2: 
-                            program_state = "speed_chooser"
+                        if find == PROCEED_BUTTON: 
+                            if len(colours_chosen) >= 2:
+                                for col in colours_chosen:
+                                    start_multi_json["colour_list"].append({
+                                        "red": colour[col][0] * CHOSEN_BUTTON_BRIGHT,
+                                        "green": colour[col][1] * CHOSEN_BUTTON_BRIGHT,
+                                        "blue": colour[col][2] * CHOSEN_BUTTON_BRIGHT})
+                                program_state = "speed_chooser"
+                                print("Speed chooser state started.")
+                                for find in range (0, NUM_PADS):
+                                    keypad.illuminate(find, 0, 0, 0)
                         elif find == CANCEL_BUTTON: 
                             program_state = "normal"
                         else:
@@ -453,7 +473,7 @@ while True:
                                             cols_with_multiplier[find][1],
                                             cols_with_multiplier[find][2])
                             
-        # ******** Countdowns ********
+    # ******** Countdowns ********
     
         screenoff_countdown = screenoff_countdown - 1
         if screenoff_countdown <= 0:
@@ -461,27 +481,76 @@ while True:
             screenoff_countdown = 0
             for find in range (0, NUM_PADS):
                 keypad.illuminate(find, 0, 0, 0)
-        
-        # for special buttons    
-        # flash_countdown = flash_countdown - 1
-        # if flash_countdown <= 0:
-        #     xmas_cur_colour = 1 if xmas_cur_colour == 0 else 0
-        #     random_cur_colour = random.randrange(4, len(colour))
-            
-        #     flash_countdown = SCENE_BUTTON_TIMES[current_wait_time]
-        #     if screenoff == False:
-        #         keypad.illuminate(XMAS_BUTTON, xmas_scene_cols[xmas_cur_colour][0],
-        #                         xmas_scene_cols[xmas_cur_colour][1],
-        #                         xmas_scene_cols[xmas_cur_colour][2])
-        #         keypad.illuminate(RANDOM_BUTTON, colour[random_cur_colour][0],
-        #                         colour[random_cur_colour][1],
-        #                         colour[random_cur_colour][2])
                 
         keypad.update()
         time.sleep(0.1)      
-                            
-# start_multi_json["colour_list"].append({
-#     "red": colour[find]["red"],
-#     "green": colour[find]["green"],
-#     "blue": colour[find]["blue"]
-# })
+        
+# ******** State: speed_chooser ********
+
+    elif program_state == "speed_chooser":
+
+        ready_to_send = False
+
+        button_states = keypad.get_button_states()
+
+        if last_button_states != button_states:
+            last_button_states = button_states
+
+            if button_states > 0:
+                button = 0
+                
+                for find in range (0, NUM_PADS):
+                    # check if this button is pressed and no other buttons are pressed
+                    if button_states & 0x01 > 0:
+                        print("Button Pressed is : " + str(find))
+                        keypad.illuminate(button, 25, 25, 25)
+                        current_button = find
+                        for i in range(len(SPEED_BUTTONS)):
+                            if find == SPEED_BUTTONS[i]:
+                                start_multi_json["wait_time"] = SCENE_WAIT_TIMES[i]
+                                ready_to_send = True
+                                print("Ready to send...")
+                                
+                    button_states >>= 1
+                    button += 1
+            else:          
+                screenoff = False
+                just_turned_on = True
+                screenoff_countdown = TIME_TO_SCREENOFF
+
+        if ready_to_send == True:
+            print()
+            y = urequests.post(start_multi_url, json = start_multi_json, headers = {'Content-Type': 'application/json'})
+            print(y)
+            y.close()
+            program_state = "normal"
+
+    # ******** Light Buttons and Countdowns********
+    
+        screenoff_countdown = screenoff_countdown - 1
+        if screenoff_countdown <= 0:
+            screenoff = True
+            screenoff_countdown = 0
+            for find in range (0, NUM_PADS):
+                keypad.illuminate(find, 0, 0, 0)
+
+        if screenoff == False:
+            for find in range (0, NUM_PADS):
+                for i in range(len(SPEED_BUTTONS)):
+                    if find == lit_buttons[i]:
+                        keypad.illuminate(find, 50, 50, 50)
+                        keypad.illuminate(dark_buttons[i], 0, 0, 0)
+
+            for j in range(len(time_til_lit)):
+                time_til_lit[j] = time_til_lit[j] - 1
+                if time_til_lit[j] <= 0:
+                    lit_buttons[j] += 1
+                    if lit_buttons[j] > (SPEED_BUTTONS[j] + 3):
+                        lit_buttons[j] = SPEED_BUTTONS[j]
+                    dark_buttons[j] += 1
+                    if dark_buttons[j] > (SPEED_BUTTONS[j] + 3):
+                        dark_buttons[j] = SPEED_BUTTONS[j]
+                    time_til_lit[j] = LIT_TIMES[j]
+                
+        keypad.update()
+        time.sleep(0.1)     
