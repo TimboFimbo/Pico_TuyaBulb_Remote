@@ -90,7 +90,7 @@ cols_with_multiplier = [0, 0, 0]
 current_button = 0
 
 # for special functions and scenes
-SCENE_BUTTON_TIMES = [20, 10, 4, 1] # how fast the buttons flash - try to set these automatically
+SCENE_BUTTON_TIMES = [20, 10, 4, 1] # how fast the buttons flash - being replaced
 SCENE_WAIT_TIMES = [3600, 600, 60, 1] # sets scene timers to 1hr | 10mins | 1min | 1sec
 current_wait_time = 0
 flash_countdown = SCENE_BUTTON_TIMES[current_wait_time]
@@ -104,6 +104,8 @@ random_cur_colour = 4
 random_scene_triggered = False
 
 MULTI_BUTTON = 1
+MULTI_BUTTON_FLASH_TIME = 10
+multi_flash_countdown = MULTI_BUTTON_FLASH_TIME
 multi_cur_colour = 0
 multi_scene_triggered = False
 
@@ -126,7 +128,7 @@ time_til_lit = [10, 6, 3, 1]
 
 # these values are constant
 colour =[[0x00,0x00,0x00], # black
-        [0x08,0x08,0x08], # dark grey
+        [0x00,0x20,0x20], # special - multi scene
         [0x20,0x00,0x00], # special - random scene
         [0x50,0x00,0x00], # special - xmas scene
         [0x20,0x00,0x00], # red
@@ -165,6 +167,12 @@ cols_with_multiplier =[
 xmas_scene_cols = [
     [0x50,0x00,0x00], # red
     [0x00,0x50,0x00] # green
+    ]
+
+multi_scene_cols = [
+    [0x00,0x50,0x50], # cyan
+    [0x25,0x00,0x50], # violet
+    [0x50,0x25,0x00] # orange
     ]
 
 # ******** JSON Requests ********
@@ -329,6 +337,10 @@ while True:
                             keypad.illuminate(find, colour[random_cur_colour][0],
                                             colour[random_cur_colour][1],
                                             colour[random_cur_colour][2])
+                        elif find == MULTI_BUTTON and len(multi_scene_cols) > 0:
+                            keypad.illuminate(find, multi_scene_cols[multi_cur_colour][0],
+                                              multi_scene_cols[multi_cur_colour][1],
+                                              multi_scene_cols[multi_cur_colour][2])
                         else:
                             keypad.illuminate(find,
                                             cols_with_multiplier[find][0],
@@ -336,6 +348,8 @@ while True:
                                             cols_with_multiplier[find][2])
 
     # ******** Perform Actions After Button Release ********
+    # Note: I don't think this is needed anymore, as most of it gets set again
+    # during the countdowns section
 
         if press_counter_on == True:
             press_countdown = press_countdown - 1
@@ -383,7 +397,7 @@ while True:
             for find in range (0, NUM_PADS):
                 keypad.illuminate(find, 0, 0, 0)
         
-        # for special buttons    
+        # for special buttons - replace these with fixed times once they all use the Countdown state
         flash_countdown = flash_countdown - 1
         if flash_countdown <= 0:
             xmas_cur_colour = 1 if xmas_cur_colour == 0 else 0
@@ -391,12 +405,25 @@ while True:
             
             flash_countdown = SCENE_BUTTON_TIMES[current_wait_time]
             if screenoff == False:
-                keypad.illuminate(XMAS_BUTTON, xmas_scene_cols[xmas_cur_colour][0],
+                keypad.illuminate(XMAS_BUTTON, 
+                                xmas_scene_cols[xmas_cur_colour][0],
                                 xmas_scene_cols[xmas_cur_colour][1],
                                 xmas_scene_cols[xmas_cur_colour][2])
-                keypad.illuminate(RANDOM_BUTTON, colour[random_cur_colour][0],
+                keypad.illuminate(RANDOM_BUTTON, 
+                                colour[random_cur_colour][0],
                                 colour[random_cur_colour][1],
                                 colour[random_cur_colour][2])
+                
+        multi_flash_countdown -= 1
+        if multi_flash_countdown <= 0 and len(multi_scene_cols) > 0:
+            multi_cur_colour += 1
+            if multi_cur_colour >= len(multi_scene_cols): multi_cur_colour = 0
+            multi_flash_countdown = MULTI_BUTTON_FLASH_TIME
+            if screenoff == False:
+                keypad.illuminate(MULTI_BUTTON, 
+                                multi_scene_cols[multi_cur_colour][0],
+                                multi_scene_cols[multi_cur_colour][1],
+                                multi_scene_cols[multi_cur_colour][2])
                 
         keypad.update()
         time.sleep(0.1)      
@@ -423,11 +450,18 @@ while True:
                         current_button = find
                         if find == PROCEED_BUTTON: 
                             if len(colours_chosen) >= 2:
+                                multi_scene_cols.clear()
                                 for col in colours_chosen:
                                     start_multi_json["colour_list"].append({
                                         "red": colour[col][0] * CHOSEN_BUTTON_BRIGHT,
                                         "green": colour[col][1] * CHOSEN_BUTTON_BRIGHT,
                                         "blue": colour[col][2] * CHOSEN_BUTTON_BRIGHT})
+                                    new_multi_cols = []
+                                    new_multi_cols.append(colour[col][0] * 2)
+                                    new_multi_cols.append(colour[col][1] * 2)
+                                    new_multi_cols.append(colour[col][2] * 2)
+                                    multi_scene_cols.append(new_multi_cols)
+                                    multi_cur_colour = 0
                                 program_state = "speed_chooser"
                                 print("Speed chooser state started.")
                                 for find in range (0, NUM_PADS):
