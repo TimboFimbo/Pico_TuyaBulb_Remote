@@ -243,6 +243,30 @@ start_multi_json = {
   "wait_time": 600
 }
 
+def set_colour_chooser_lights():
+    for find in range (0, NUM_PADS):
+        for i in range(3):
+            if find in colours_chosen:
+                cols_with_multiplier[find][i] = int(colour[find][i] * CHOSEN_BUTTON_BRIGHT)
+            else:
+                cols_with_multiplier[find][i] = int(colour[find][i] / CHOSEN_BUTTON_DARK)
+                
+            if find == PROCEED_BUTTON:
+                keypad.illuminate(find, colour[12][0] * CHOSEN_BUTTON_BRIGHT,
+                                colour[12][1] * CHOSEN_BUTTON_BRIGHT,
+                                colour[12][2] * CHOSEN_BUTTON_BRIGHT) # green
+            elif find == CANCEL_BUTTON:
+                keypad.illuminate(find, colour[4][0] * CHOSEN_BUTTON_BRIGHT,
+                                colour[4][1] * CHOSEN_BUTTON_BRIGHT,
+                                colour[4][2] * CHOSEN_BUTTON_BRIGHT) # red
+            elif find in UNUSED_BUTTONS:
+                keypad.illuminate(find, 0, 0, 0) # black
+            else:
+                keypad.illuminate(find,
+                                cols_with_multiplier[find][0],
+                                cols_with_multiplier[find][1],
+                                cols_with_multiplier[find][2])
+
 # ******** Initial illumination ********
 
 NUM_PADS = keypad.get_num_pads()
@@ -284,7 +308,7 @@ while True:
                         # for special scenes
                         if find == XMAS_BUTTON: xmas_scene_triggered = True
                         if find == RANDOM_BUTTON: random_scene_triggered = True
-                        if find == MULTI_BUTTON: program_state = "colour_chooser"
+                        if find == MULTI_BUTTON: multi_scene_triggered = True
                                 
                     button_states >>= 1
                     button += 1
@@ -310,7 +334,12 @@ while True:
                             start_random_json["wait_time"] = SCENE_WAIT_TIMES[current_wait_time]
                         else:
                             col_multiplier = col_multiplier + 1
-                            if col_multiplier > 8: col_multiplier = 1 # check why > 8
+                            if col_multiplier > 8: col_multiplier = 1
+
+                if multi_scene_triggered == True and just_turned_on == False:
+                    program_state = "colour_chooser"
+                    multi_scene_triggered = False
+                    print('multi scene triggered')
 
     # ******** Light Buttons ********
 
@@ -433,6 +462,7 @@ while True:
     elif program_state == "colour_chooser":
 
         start_multi_json["colour_list"].clear()
+        set_colour_chooser_lights()
 
         button_states = keypad.get_button_states()
 
@@ -461,7 +491,7 @@ while True:
                                     new_multi_cols.append(colour[col][1] * 2)
                                     new_multi_cols.append(colour[col][2] * 2)
                                     multi_scene_cols.append(new_multi_cols)
-                                    multi_cur_colour = 0
+                                    multi_cur_colour = 0    
                                 program_state = "speed_chooser"
                                 print("Speed chooser state started.")
                                 for find in range (0, NUM_PADS):
@@ -480,32 +510,7 @@ while True:
                 screenoff = False
                 just_turned_on = True
                 screenoff_countdown = TIME_TO_SCREENOFF
-                    
-    # ******** Light Buttons ********
-
-                for find in range (0, NUM_PADS):
-
-                    for i in range(3):
-                        if find in colours_chosen:
-                            cols_with_multiplier[find][i] = int(colour[find][i] * CHOSEN_BUTTON_BRIGHT)
-                        else:
-                            cols_with_multiplier[find][i] = int(colour[find][i] / CHOSEN_BUTTON_DARK)
-                            
-                        if find == PROCEED_BUTTON:
-                            keypad.illuminate(find, colour[12][0] * CHOSEN_BUTTON_BRIGHT,
-                                            colour[12][1] * CHOSEN_BUTTON_BRIGHT,
-                                            colour[12][2] * CHOSEN_BUTTON_BRIGHT) # green
-                        elif find == CANCEL_BUTTON:
-                            keypad.illuminate(find, colour[4][0] * CHOSEN_BUTTON_BRIGHT,
-                                            colour[4][1] * CHOSEN_BUTTON_BRIGHT,
-                                            colour[4][2] * CHOSEN_BUTTON_BRIGHT) # red
-                        elif find in UNUSED_BUTTONS:
-                            keypad.illuminate(find, 0, 0, 0) # black
-                        else:
-                            keypad.illuminate(find,
-                                            cols_with_multiplier[find][0],
-                                            cols_with_multiplier[find][1],
-                                            cols_with_multiplier[find][2])
+                set_colour_chooser_lights()
                             
     # ******** Countdowns ********
     
