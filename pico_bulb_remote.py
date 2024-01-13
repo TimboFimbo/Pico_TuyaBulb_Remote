@@ -108,10 +108,12 @@ MULTI_BUTTON_FLASH_TIME = 10
 multi_flash_countdown = MULTI_BUTTON_FLASH_TIME
 multi_cur_colour = 0
 multi_scene_triggered = False
+multi_scene_brightness = 1
 
 # Colour chooser state
 CANCEL_BUTTON = 0
-UNUSED_BUTTONS = [1, 2]
+BRIGHTNESS_DOWN_BUTTON = 1
+BRIGHTNESS_UP_BUTTON = 2
 PROCEED_BUTTON = 3
 CHOSEN_BUTTON_BRIGHT = 7
 CHOSEN_BUTTON_DARK = 5
@@ -247,7 +249,8 @@ def set_colour_chooser_lights():
     for find in range (0, NUM_PADS):
         for i in range(3):
             if find in colours_chosen:
-                cols_with_multiplier[find][i] = int(colour[find][i] * CHOSEN_BUTTON_BRIGHT)
+                cols_with_multiplier[find][i] = int(colour[find][i] * multi_scene_brightness)
+                if cols_with_multiplier[find][i] > 255: cols_with_multiplier[find][i] = 255
             else:
                 cols_with_multiplier[find][i] = int(colour[find][i] / CHOSEN_BUTTON_DARK)
                 
@@ -259,8 +262,10 @@ def set_colour_chooser_lights():
                 keypad.illuminate(find, colour[4][0] * CHOSEN_BUTTON_BRIGHT,
                                 colour[4][1] * CHOSEN_BUTTON_BRIGHT,
                                 colour[4][2] * CHOSEN_BUTTON_BRIGHT) # red
-            elif find in UNUSED_BUTTONS:
-                keypad.illuminate(find, 0, 0, 0) # black
+            elif find == BRIGHTNESS_DOWN_BUTTON:
+                keypad.illuminate(find, 15, 15, 15) # dark grey
+            elif find == BRIGHTNESS_UP_BUTTON:
+                keypad.illuminate(find, 200, 200, 200) # dark grey
             else:
                 keypad.illuminate(find,
                                 cols_with_multiplier[find][0],
@@ -482,10 +487,16 @@ while True:
                             if len(colours_chosen) >= 2:
                                 multi_scene_cols.clear()
                                 for col in colours_chosen:
+                                    red = colour[col][0] * multi_scene_brightness
+                                    if red > 255: red = 255
+                                    green = colour[col][1] * multi_scene_brightness
+                                    if green > 255: green = 255
+                                    blue = colour[col][2] * multi_scene_brightness
+                                    if blue > 255: blue = 255
                                     start_multi_json["colour_list"].append({
-                                        "red": colour[col][0] * CHOSEN_BUTTON_BRIGHT,
-                                        "green": colour[col][1] * CHOSEN_BUTTON_BRIGHT,
-                                        "blue": colour[col][2] * CHOSEN_BUTTON_BRIGHT})
+                                        "red": red,
+                                        "green": green,
+                                        "blue": blue})
                                     new_multi_cols = []
                                     new_multi_cols.append(colour[col][0] * 2)
                                     new_multi_cols.append(colour[col][1] * 2)
@@ -498,6 +509,14 @@ while True:
                                     keypad.illuminate(find, 0, 0, 0)
                         elif find == CANCEL_BUTTON: 
                             program_state = "normal"
+                        elif find == BRIGHTNESS_DOWN_BUTTON:
+                            multi_scene_brightness -= 1
+                            if multi_scene_brightness < 1: multi_scene_brightness = 1
+                            print("Multi-Scene brightness: {}".format(str(multi_scene_brightness)))
+                        elif find == BRIGHTNESS_UP_BUTTON:
+                            multi_scene_brightness += 1
+                            if multi_scene_brightness > 8: multi_scene_brightness = 8
+                            print("Multi-Scene brightness: {}".format(str(multi_scene_brightness)))
                         else:
                             if find in colours_chosen:
                                 colours_chosen.remove(find)
