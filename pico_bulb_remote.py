@@ -100,15 +100,18 @@ xmas_cur_colour = 0
 xmas_scene_triggered = False
 
 RANDOM_BUTTON = 2
-random_cur_colour = 4
+RANDOM_BUTTON_FLASH_TIME = 4
+random_flash_countdown = RANDOM_BUTTON_FLASH_TIME
+random_cur_colour = 0
 random_scene_triggered = False
+random_scene_brightness = 4
 
 MULTI_BUTTON = 1
 MULTI_BUTTON_FLASH_TIME = 10
 multi_flash_countdown = MULTI_BUTTON_FLASH_TIME
 multi_cur_colour = 0
 multi_scene_triggered = False
-multi_scene_brightness = 1
+multi_scene_brightness = 4
 
 # Colour chooser state
 CANCEL_BUTTON = 0
@@ -117,7 +120,8 @@ BRIGHTNESS_UP_BUTTON = 2
 PROCEED_BUTTON = 3
 CHOSEN_BUTTON_BRIGHT = 7
 CHOSEN_BUTTON_DARK = 5
-colours_chosen = []
+multi_colours_chosen = []
+random_colours_chosen = []
 
 # Speed chooser state
 SPEED_BUTTONS = [0, 4, 8, 12]
@@ -177,6 +181,12 @@ multi_scene_cols = [
     [0x50,0x25,0x00] # orange
     ]
 
+random_scene_cols = [
+    [0x50,0x00,0x00], # red
+    [0x00,0x50,0x00], # green
+    [0x00,0x00,0x50] # blue
+    ]
+
 # ******** JSON Requests ********
 
 # names here should match those in the API
@@ -224,35 +234,44 @@ start_xmas_json = {
 }
 
 start_random_json = {
-    "wait_time": SCENE_WAIT_TIMES[0] ,
-    "toggles": bulb_toggles
+    "wait_time": SCENE_WAIT_TIMES[0],
+    "toggles": bulb_toggles,
+    "colour_list": []
 }
 
 start_multi_json = {
+  "wait_time": 600,
   "bulb_lists": [
     [
       "Den Light",
       "Chair Light",
-      "Sofa Light"
+      "Sofa Light",
+      "Black Lamp"
     ],
     [
       "White Lamp",
-      "Wood Lamp",
-      "Black Lamp"
+      "Wood Lamp"
     ]
   ],
-  "colour_list": [],
-  "wait_time": 600
+  "colour_list": []
 }
 
 def set_colour_chooser_lights():
     for find in range (0, NUM_PADS):
         for i in range(3):
-            if find in colours_chosen:
-                cols_with_multiplier[find][i] = int(colour[find][i] * multi_scene_brightness)
-                if cols_with_multiplier[find][i] > 255: cols_with_multiplier[find][i] = 255
-            else:
-                cols_with_multiplier[find][i] = int(colour[find][i] / CHOSEN_BUTTON_DARK)
+            
+            if multi_scene_triggered == True:
+                if find in multi_colours_chosen:
+                    cols_with_multiplier[find][i] = int(colour[find][i] * multi_scene_brightness)
+                    if cols_with_multiplier[find][i] > 255: cols_with_multiplier[find][i] = 255
+                else:
+                    cols_with_multiplier[find][i] = int(colour[find][i] / CHOSEN_BUTTON_DARK)
+            elif random_scene_triggered == True:
+                if find in random_colours_chosen:
+                    cols_with_multiplier[find][i] = int(colour[find][i] * random_scene_brightness)
+                    if cols_with_multiplier[find][i] > 255: cols_with_multiplier[find][i] = 255
+                else:
+                    cols_with_multiplier[find][i] = int(colour[find][i] / CHOSEN_BUTTON_DARK)
                 
             if find == PROCEED_BUTTON:
                 keypad.illuminate(find, colour[12][0] * CHOSEN_BUTTON_BRIGHT,
@@ -271,6 +290,64 @@ def set_colour_chooser_lights():
                                 cols_with_multiplier[find][0],
                                 cols_with_multiplier[find][1],
                                 cols_with_multiplier[find][2])
+                
+def proceed_button_pressed():
+
+    global multi_cur_colour
+    global random_cur_colour
+    global program_state
+
+    if multi_scene_triggered == True:
+        if len(multi_colours_chosen) >= 2:
+            multi_scene_cols.clear()
+            for col in multi_colours_chosen:
+                red = colour[col][0] * multi_scene_brightness
+                if red > 255: red = 255
+                green = colour[col][1] * multi_scene_brightness
+                if green > 255: green = 255
+                blue = colour[col][2] * multi_scene_brightness
+                if blue > 255: blue = 255
+                start_multi_json["colour_list"].append({
+                    "red": red,
+                    "green": green,
+                    "blue": blue})
+                new_multi_cols = []
+                new_multi_cols.append(colour[col][0] * 2)
+                new_multi_cols.append(colour[col][1] * 2)
+                new_multi_cols.append(colour[col][2] * 2)
+                multi_scene_cols.append(new_multi_cols)
+                multi_cur_colour = 0    
+
+                program_state = "speed_chooser"
+                print("Speed chooser state started.")
+                for find in range (0, NUM_PADS):
+                    keypad.illuminate(find, 0, 0, 0)
+
+    elif random_scene_triggered == True:
+        if len(random_colours_chosen) >= 2:
+            random_scene_cols.clear()
+            for col in random_colours_chosen:
+                red = colour[col][0] * random_scene_brightness
+                if red > 255: red = 255
+                green = colour[col][1] * random_scene_brightness
+                if green > 255: green = 255
+                blue = colour[col][2] * random_scene_brightness
+                if blue > 255: blue = 255
+                start_random_json["colour_list"].append({
+                    "red": red,
+                    "green": green,
+                    "blue": blue})
+                new_random_cols = []
+                new_random_cols.append(colour[col][0] * 2)
+                new_random_cols.append(colour[col][1] * 2)
+                new_random_cols.append(colour[col][2] * 2)
+                random_scene_cols.append(new_random_cols)
+                random_cur_colour = 0 
+
+                program_state = "speed_chooser"
+                print("Speed chooser state started.")
+                for find in range (0, NUM_PADS):
+                    keypad.illuminate(find, 0, 0, 0)
 
 # ******** Initial illumination ********
 
@@ -343,8 +420,11 @@ while True:
 
                 if multi_scene_triggered == True and just_turned_on == False:
                     program_state = "colour_chooser"
-                    multi_scene_triggered = False
                     print('multi scene triggered')
+
+                if random_scene_triggered == True and just_turned_on == False:
+                    program_state = "colour_chooser"
+                    print('random scene triggered')
 
     # ******** Light Buttons ********
 
@@ -409,10 +489,6 @@ while True:
                         y = urequests.post(start_xmas_url, json = start_xmas_json, headers = {'Content-Type': 'application/json'})
                         xmas_scene_triggered = False
                         print('xmas scene triggered')
-                    elif random_scene_triggered == True:
-                        y = urequests.post(start_random_url, json = start_random_json, headers = {'Content-Type': 'application/json'})
-                        random_scene_triggered = False
-                        print('random scene triggered')
                     else:
                         y = urequests.put(set_colour_url, json = set_colour_json, headers = {'Content-Type': 'application/json'})
                     print(y)
@@ -435,7 +511,6 @@ while True:
         flash_countdown = flash_countdown - 1
         if flash_countdown <= 0:
             xmas_cur_colour = 1 if xmas_cur_colour == 0 else 0
-            random_cur_colour = random.randrange(4, len(colour))
             
             flash_countdown = SCENE_BUTTON_TIMES[current_wait_time]
             if screenoff == False:
@@ -459,6 +534,18 @@ while True:
                                 multi_scene_cols[multi_cur_colour][1],
                                 multi_scene_cols[multi_cur_colour][2])
                 
+        random_flash_countdown -= 1
+        if random_flash_countdown <= 0 and len(random_scene_cols) > 0:
+            random_cur_colour += 1
+            random_cur_colour = random.randrange(0, len(random_scene_cols))
+            if random_cur_colour >= len(random_scene_cols): random_cur_colour = 0
+            random_flash_countdown = RANDOM_BUTTON_FLASH_TIME
+            if screenoff == False:
+                keypad.illuminate(RANDOM_BUTTON, 
+                                random_scene_cols[random_cur_colour][0],
+                                random_scene_cols[random_cur_colour][1],
+                                random_scene_cols[random_cur_colour][2])
+                
         keypad.update()
         time.sleep(0.1)      
 
@@ -467,7 +554,10 @@ while True:
     elif program_state == "colour_chooser":
 
         start_multi_json["colour_list"].clear()
+        start_random_json["colour_list"].clear()
         set_colour_chooser_lights()
+        print("Multi-Colours chosen: {}".format(len(multi_colours_chosen)))
+        print("Random-Colours chosen: {}".format(len(random_colours_chosen)))
 
         button_states = keypad.get_button_states()
 
@@ -483,45 +573,47 @@ while True:
                         print("Button Pressed is : " + str(find))
                         keypad.illuminate(button, 25, 25, 25)
                         current_button = find
+
                         if find == PROCEED_BUTTON: 
-                            if len(colours_chosen) >= 2:
-                                multi_scene_cols.clear()
-                                for col in colours_chosen:
-                                    red = colour[col][0] * multi_scene_brightness
-                                    if red > 255: red = 255
-                                    green = colour[col][1] * multi_scene_brightness
-                                    if green > 255: green = 255
-                                    blue = colour[col][2] * multi_scene_brightness
-                                    if blue > 255: blue = 255
-                                    start_multi_json["colour_list"].append({
-                                        "red": red,
-                                        "green": green,
-                                        "blue": blue})
-                                    new_multi_cols = []
-                                    new_multi_cols.append(colour[col][0] * 2)
-                                    new_multi_cols.append(colour[col][1] * 2)
-                                    new_multi_cols.append(colour[col][2] * 2)
-                                    multi_scene_cols.append(new_multi_cols)
-                                    multi_cur_colour = 0    
-                                program_state = "speed_chooser"
-                                print("Speed chooser state started.")
-                                for find in range (0, NUM_PADS):
-                                    keypad.illuminate(find, 0, 0, 0)
+                            proceed_button_pressed()
+
                         elif find == CANCEL_BUTTON: 
+                            multi_scene_triggered = False
+                            random_scene_triggered = False
+                            just_turned_on = True
                             program_state = "normal"
+
                         elif find == BRIGHTNESS_DOWN_BUTTON:
-                            multi_scene_brightness -= 1
-                            if multi_scene_brightness < 1: multi_scene_brightness = 1
-                            print("Multi-Scene brightness: {}".format(str(multi_scene_brightness)))
+                            if multi_scene_triggered == True:
+                                multi_scene_brightness -= 1
+                                if multi_scene_brightness < 1: multi_scene_brightness = 1
+                                print("Multi-Scene brightness: {}".format(str(multi_scene_brightness)))
+                            elif random_scene_triggered == True:
+                                random_scene_brightness -= 1
+                                if random_scene_brightness < 1: random_scene_brightness = 1
+                                print("Random-Scene brightness: {}".format(str(random_scene_brightness)))
+
                         elif find == BRIGHTNESS_UP_BUTTON:
-                            multi_scene_brightness += 1
-                            if multi_scene_brightness > 8: multi_scene_brightness = 8
-                            print("Multi-Scene brightness: {}".format(str(multi_scene_brightness)))
+                            if multi_scene_triggered == True:
+                                multi_scene_brightness += 1
+                                if multi_scene_brightness > 8: multi_scene_brightness = 8
+                                print("Multi-Scene brightness: {}".format(str(multi_scene_brightness)))
+                            elif random_scene_triggered == True:
+                                random_scene_brightness += 1
+                                if random_scene_brightness > 8: random_scene_brightness = 8
+                                print("Random-Scene brightness: {}".format(str(random_scene_brightness)))
+
                         else:
-                            if find in colours_chosen:
-                                colours_chosen.remove(find)
-                            else:
-                                colours_chosen.append(find)
+                            if multi_scene_triggered == True:
+                                if find in multi_colours_chosen:
+                                    multi_colours_chosen.remove(find)
+                                else:
+                                    multi_colours_chosen.append(find)
+                            elif random_scene_triggered == True:
+                                if find in random_colours_chosen:
+                                    random_colours_chosen.remove(find)
+                                else:
+                                    random_colours_chosen.append(find)
                                 
                     button_states >>= 1
                     button += 1
@@ -565,7 +657,10 @@ while True:
                         current_button = find
                         for i in range(len(SPEED_BUTTONS)):
                             if find == SPEED_BUTTONS[i]:
-                                start_multi_json["wait_time"] = SCENE_WAIT_TIMES[i]
+                                if multi_scene_triggered == True:
+                                    start_multi_json["wait_time"] = SCENE_WAIT_TIMES[i]
+                                elif random_scene_triggered == True:
+                                    start_random_json["wait_time"] = SCENE_WAIT_TIMES[i]
                                 ready_to_send = True
                                 print("Ready to send...")
                                 
@@ -578,9 +673,14 @@ while True:
 
         if ready_to_send == True:
             print()
-            y = urequests.post(start_multi_url, json = start_multi_json, headers = {'Content-Type': 'application/json'})
+            if multi_scene_triggered == True:
+                y = urequests.post(start_multi_url, json = start_multi_json, headers = {'Content-Type': 'application/json'})
+            elif random_scene_triggered == True:
+                y = urequests.post(start_random_url, json = start_random_json, headers = {'Content-Type': 'application/json'})
             print(y)
             y.close()
+            multi_scene_triggered = False
+            random_scene_triggered == False
             program_state = "normal"
 
     # ******** Light Buttons and Countdowns********
