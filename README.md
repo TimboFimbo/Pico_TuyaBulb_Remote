@@ -16,8 +16,8 @@ Notes and TODOs:
 
 - I've started adding the ability to trigger scenes, using the top row buttons. They start with a 60 minute wait time between changes, and pressing each button multiple times cycles through wait times - they're' currently set to 60 mins, 10 mins, 1 min, then 1 sec, but this may change. The buttons are currently set as follows:
     - 0: Switch all lights to RGB(0, 0, 0). This turns most bulbs off, but not strip lights. I'll change this to a proper power on and off soon.
-    - 1: Switch all lights to white. I'm planning on replacing this.
-    - 2: Trigger Random Colour Scene, with all bulbs and colours used.
-    - 3: Trigger Xmas Scene, which I'll replace with the Multi-Colour Scene soon.
+    - 1: Trigger Multi Colour Scene, with selected bulbs and colours used
+    - 2: Trigger Random Colour Scene, with selected bulbs and colours used.
+    - 3: Trigger Xmas Scene, which will be removed soon.
 
 - Although everything works, it was started as a simple script to light up the keypad buttons, but is getting more complex over time. It's not unreadable, but it needs some tidying up before much more is added.

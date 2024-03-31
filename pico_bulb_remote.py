@@ -13,7 +13,7 @@ import random
 # from enum import Enum
 
 # Set the SSID and password of your Wi-Fi network (2.4GHz only)
-# Change the IP addresses of the endpoints to that of your server
+# Change the IP addresses of the endspoints to that of your server
 ssid = 'SSID HERE'
 password = 'PASSWORD HERE'
 base_url = 'http://192.168.0.116:8000'
@@ -193,26 +193,32 @@ random_scene_cols = [
 bulb_toggles = [
     {
       "name": "Black Lamp",
+      "bright_mul": 0.5,
       "toggle": True
     },
     {
       "name": "White Lamp",
+      "bright_mul": 1.0,
       "toggle": True
     },
     {
       "name": "Chair Light",
+      "bright_mul": 2.0,
       "toggle": True
     },
     {
       "name": "Den Light",
+      "bright_mul": 1.0,
       "toggle": True
     },
     {
       "name": "Wood Lamp",
+      "bright_mul": 1.0,
       "toggle": True
     },
     {
       "name": "Sofa Light",
+      "bright_mul": 2.0,
       "toggle": True
     }      
 ]    
@@ -243,14 +249,38 @@ start_multi_json = {
   "wait_time": 600,
   "bulb_lists": [
     [
-      "Den Light",
-      "Chair Light",
-      "Sofa Light",
-      "Black Lamp"
+      {
+        "name": "Black Lamp",
+        "bright_mul": 0.5,
+        "toggle": True
+      },
+      {
+        "name": "Chair Light",
+        "bright_mul": 2,
+        "toggle": True
+      },
+      {
+        "name": "Den Light",
+        "bright_mul": 1,
+        "toggle": True
+      },
+      {
+        "name": "Sofa Light",
+        "bright_mul": 2,
+        "toggle": True
+      }
     ],
     [
-      "White Lamp",
-      "Wood Lamp"
+      {
+        "name": "White Lamp",
+        "bright_mul": 1,
+        "toggle": True
+      },
+      {
+        "name": "Wood Lamp",
+        "bright_mul": 1,
+        "toggle": True
+      }
     ]
   ],
   "colour_list": []
@@ -357,6 +387,8 @@ print(NUM_PADS)
 
 for find in range (0, NUM_PADS):
     keypad.illuminate(find, colour[find][0], colour[find][1], colour[find][2])
+    keypad.update()
+    time.sleep(0.1)
 
 global c # what is this for?
 
