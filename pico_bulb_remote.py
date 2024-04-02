@@ -9,14 +9,16 @@ import ujson
 import network
 import urequests
 import random
+import config
 
 # from enum import Enum
 
 # Set the SSID and password of your Wi-Fi network (2.4GHz only)
 # Change the IP addresses of the endspoints to that of your server
-ssid = 'SSID HERE'
-password = 'PASSWORD HERE'
-base_url = 'http://192.168.0.116:8000'
+# You can include a config file with any varibales you don't want visible
+ssid = config.REMOTE_SSID
+password = config.REMOTE_PASSWORD
+base_url = config.BASE_URL
 set_colour_url = base_url + '/set_colour'
 set_power_url = base_url + '/set_power'
 set_brightness_url = base_url + '/brightness'
@@ -112,6 +114,9 @@ multi_flash_countdown = MULTI_BUTTON_FLASH_TIME
 multi_cur_colour = 0
 multi_scene_triggered = False
 multi_scene_brightness = 4
+
+POWER_OFF_BUTTON = 0
+power_off_triggered = False
 
 # Colour chooser state
 CANCEL_BUTTON = 0
@@ -223,8 +228,13 @@ bulb_toggles = [
     }      
 ]    
 
-set_power_json = {
+set_power_on_json = {
     "power": True,
+    "toggles": bulb_toggles   
+}
+
+set_power_off_json = {
+    "power": False,
     "toggles": bulb_toggles   
 }
 
@@ -285,6 +295,11 @@ start_multi_json = {
   ],
   "colour_list": []
 }
+
+def power_off_bulbs():
+    y = urequests.put(set_power_url, json = set_power_off_json, headers = {'Content-Type': 'application/json'})
+    print(y)
+    y.close()
 
 def set_colour_chooser_lights():
     for find in range (0, NUM_PADS):
@@ -423,6 +438,7 @@ while True:
                         if find == XMAS_BUTTON: xmas_scene_triggered = True
                         if find == RANDOM_BUTTON: random_scene_triggered = True
                         if find == MULTI_BUTTON: multi_scene_triggered = True
+                        if find == POWER_OFF_BUTTON: power_off_triggered = True
                                 
                     button_states >>= 1
                     button += 1
@@ -505,9 +521,10 @@ while True:
                 
                 if just_turned_on == False:
                 # now send the request to bulbs
-                    if power_turned_on == False:
+                
+                    if power_turned_on == False and power_off_triggered == False:
                         power_turned_on = True
-                        x = urequests.put(set_power_url, json = set_power_json, headers = {'Content-Type': 'application/json'})
+                        x = urequests.put(set_power_url, json = set_power_on_json, headers = {'Content-Type': 'application/json'})
                         x.close()
                             
                     set_colour_json['red'] = cols_with_multiplier[current_button][0]
@@ -521,10 +538,15 @@ while True:
                         y = urequests.post(start_xmas_url, json = start_xmas_json, headers = {'Content-Type': 'application/json'})
                         xmas_scene_triggered = False
                         print('xmas scene triggered')
+                        y.close()
+                    elif power_off_triggered:
+                        power_off_bulbs()
+                        power_turned_on = False
+                        power_off_triggered = False
                     else:
                         y = urequests.put(set_colour_url, json = set_colour_json, headers = {'Content-Type': 'application/json'})
-                    print(y)
-                    y.close()
+                        print(y)
+                        y.close()
                 else:
                     just_turned_on = False
 
@@ -704,6 +726,10 @@ while True:
                 screenoff_countdown = TIME_TO_SCREENOFF
 
         if ready_to_send == True:
+            if power_turned_on == False and power_off_triggered == False:
+                    power_turned_on = True
+                    x = urequests.put(set_power_url, json = set_power_on_json, headers = {'Content-Type': 'application/json'})
+                    x.close()
             print()
             if multi_scene_triggered == True:
                 y = urequests.post(start_multi_url, json = start_multi_json, headers = {'Content-Type': 'application/json'})

@@ -1,0 +1,5 @@
+# Ignore the .env file that contains global variables
+config.*
+
+# Ignore the pycache files
+*.pyc
