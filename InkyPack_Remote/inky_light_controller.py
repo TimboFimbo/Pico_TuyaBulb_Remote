@@ -22,11 +22,12 @@ button_c = Button(14)
 WIDTH, HEIGHT = graphics.get_bounds()
 # change the ip address to that of the computer running the api
 ENDPOINT = 'http://192.168.0.116:8000'
+start_shifting_url = ENDPOINT + '/start_multi_colour_scene_async'
 start_random_url = ENDPOINT + '/start_random_colour_scene_async'
 start_lightning_url = ENDPOINT + '/start_lightning_scene'
 
 printed_connection_status = False
-state = 'home' # states: home, scene_screen, scene_options, colours
+state = 'home' # states: home, scene_screen, scene_options, colours, start
 changed_state = True
 
 home_screen_choices = [
@@ -34,6 +35,7 @@ home_screen_choices = [
     "Colours: ",
     "Brightness: ",
     "Speed: ",
+    "Bulbs: ",
     "Start",
     "Lights Off"]
 
@@ -43,8 +45,45 @@ scene_screen_choices = [
     "Random",
     "Lightning"]
 
+colours_screen_choices = [
+    "Default",
+    "Select All",
+    "Red",
+    "Green",
+    "Blue",
+    "Done"]
+
+brightness_screen_choices = [
+    "Default",
+    "V. Low",
+    "Low",
+    "Medium",
+    "High",
+    "V. High"]
+
+speed_screen_choices = [
+    "Default",
+    "V.Slow",
+    "Slow",
+    "Medium",
+    "Fast",
+    "V. Fast"]
+
+bulbs_screen_choices = [
+    "Default",
+    "Black Lamp",
+    "White Lamp",
+    "Wood Lamp",
+    "Den Light",
+    "Chair Light",
+    "Sofa Light"]
+
 current_home_choice = 0
 current_scene_choice = 3
+current_colours_choice = 0
+current_brightness_choice = 0
+current_speed_choice = 0
+current_bulbs_choice = 0
 
 # ******** JSON Requests ********
 
@@ -80,6 +119,171 @@ start_lightning_json = {
   ]
 }
 
+start_shifting_json = {
+  "wait_time": 600,
+  "bulb_lists": [
+    [
+      {
+        "name": "Black Lamp",
+        "bright_mul": 0.5,
+        "toggle": True
+      },
+      {
+        "name": "Chair Light",
+        "bright_mul": 2,
+        "toggle": True
+      },
+      {
+        "name": "Den Light",
+        "bright_mul": 2,
+        "toggle": True
+      },
+      {
+        "name": "Sofa Light",
+        "bright_mul": 2,
+        "toggle": True
+      }
+    ],
+    [
+      {
+        "name": "White Lamp",
+        "bright_mul": 1,
+        "toggle": True
+      },
+      {
+        "name": "Wood Lamp",
+        "bright_mul": 1,
+        "toggle": True
+      }
+    ]
+  ],
+  "colour_list": [
+    {
+      "red": 255,
+      "green": 128,
+      "blue": 0
+    },
+    {
+      "red": 255,
+      "green": 0,
+      "blue": 128
+    },
+    {
+      "red": 0,
+      "green": 128,
+      "blue": 255
+    },
+    {
+      "red": 128,
+      "green": 255,
+      "blue": 0
+    },
+    {
+      "red": 128,
+      "green": 0,
+      "blue": 255
+    }
+  ]
+}
+
+start_random_json = {
+  "wait_time": 600,
+  "toggles": [
+    {
+      "name": "Black Lamp",
+      "bright_mul": 0.5,
+      "toggle": True
+    },
+    {
+      "name": "White Lamp",
+      "bright_mul": 1,
+      "toggle": True
+    },
+    {
+      "name": "Chair Light",
+      "bright_mul": 2,
+      "toggle": True
+    },
+    {
+      "name": "Den Light",
+      "bright_mul": 2,
+      "toggle": True
+    },
+    {
+      "name": "Wood Lamp",
+      "bright_mul": 1,
+      "toggle": True
+    },
+    {
+      "name": "Sofa Light",
+      "bright_mul": 2,
+      "toggle": True
+    }
+  ],
+  "colour_list": [
+    {
+      "red": 255,
+      "green": 0,
+      "blue": 0
+    },
+    {
+      "red": 0,
+      "green": 255,
+      "blue": 0
+    },
+    {
+      "red": 0,
+      "green": 0,
+      "blue": 255
+    },
+    {
+      "red": 255,
+      "green": 0,
+      "blue": 128
+    },
+    {
+      "red": 255,
+      "green": 0,
+      "blue": 255
+    },
+    {
+      "red": 128,
+      "green": 0,
+      "blue": 255
+    },
+    {
+      "red": 0,
+      "green": 128,
+      "blue": 255
+    },
+    {
+      "red": 0,
+      "green": 255,
+      "blue": 255
+    },
+    {
+      "red": 0,
+      "green": 255,
+      "blue": 128
+    },
+    {
+      "red": 128,
+      "green": 255,
+      "blue": 0
+    },
+    {
+      "red": 255,
+      "green": 255,
+      "blue": 0
+    },
+    {
+      "red": 255,
+      "green": 128,
+      "blue": 0
+    }
+  ]
+}
+
 def clear():
     graphics.set_pen(15)
     graphics.clear()
@@ -99,6 +303,34 @@ def status_handler(mode, status, ip):
     graphics.text(status_text, 10, 30, scale=2)
     graphics.text("IP: {}".format(ip), 10, 60, scale=2)
     graphics.update()
+    
+def send_request(): # for now, this only sends the defaults
+    global state
+    global changed_state
+    global scene_screen_choices
+    global current_scene_choice
+    
+    message = "Sending Request..."
+    message_scale = 2
+    clear()
+    graphics.set_pen(0)
+    graphics.text(message, int(get_text_position(message, message_scale)), 50, scale=message_scale)
+    graphics.update()
+
+    if scene_screen_choices[current_scene_choice] == "Shifting":
+        y = urequests.post(start_shifting_url, json = start_shifting_json, headers = {'Content-Type': 'application/json'})
+        y.close()
+        print("Shifting Scene Started")
+    elif scene_screen_choices[current_scene_choice] == "Random":
+        y = urequests.post(start_random_url, json = start_random_json, headers = {'Content-Type': 'application/json'})
+        y.close()
+        print("Random Scene Started")
+    elif scene_screen_choices[current_scene_choice] == "Lightning":
+        y = urequests.post(start_lightning_url, json = start_lightning_json, headers = {'Content-Type': 'application/json'})
+        y.close()
+        print("Lightning Scene Started") 
+        
+    state = 'home'
     
 def get_choice_number(plus_or_minus: int, current_choice, screen_choices):
 #     global current_home_choice
@@ -121,7 +353,8 @@ def select_option(current_choice, current_state):
     if current_state == 'home':
         if home_screen_choices[current_choice] == "Scene: ":
             return 'scene_screen'
-            
+        if home_screen_choices[current_choice] == "Start":
+            return 'start'    
 
 def update():
     global printed_connection_status
@@ -144,14 +377,25 @@ def update():
     cur_selected_choice = 0
     
     for i in range(0, number_of_choices_shown):
-        if state == 'home':
+        if state == 'home' or state == 'start':
             choice = home_screen_choices[get_choice_number(i-1, current_home_choice, home_screen_choices)]
+            
             if choice == 'Scene: ':
                 choices.append(home_screen_choices[get_choice_number(i-1, current_home_choice, home_screen_choices)] + scene_screen_choices[current_scene_choice])
+            elif choice == 'Colours: ':
+                choices.append(home_screen_choices[get_choice_number(i-1, current_home_choice, home_screen_choices)] + colours_screen_choices[current_colours_choice])
+            elif choice == 'Brightness: ':
+                choices.append(home_screen_choices[get_choice_number(i-1, current_home_choice, home_screen_choices)] + brightness_screen_choices[current_brightness_choice])
+            elif choice == 'Speed: ':
+                choices.append(home_screen_choices[get_choice_number(i-1, current_home_choice, home_screen_choices)] + speed_screen_choices[current_speed_choice])
+            elif choice == 'Bulbs: ':
+                choices.append(home_screen_choices[get_choice_number(i-1, current_home_choice, home_screen_choices)] + bulbs_screen_choices[current_bulbs_choice])
             else:                  
                 choices.append(home_screen_choices[get_choice_number(i-1, current_home_choice, home_screen_choices)])
+            
             cur_screen_choices = home_screen_choices
             cur_selected_choice = current_home_choice
+            
         elif state == 'scene_screen':
             choices.append(scene_screen_choices[get_choice_number(i-1, current_scene_choice, scene_screen_choices)])
             cur_screen_choices = scene_screen_choices
@@ -169,10 +413,17 @@ def update():
                 choices.append(home_screen_choices[get_choice_number(i-1, cur_selected_choice, cur_screen_choices)])
                 cur_screen_choices = home_screen_choices
                 cur_selected_choice = current_home_choice
+                
             elif state == 'scene_screen':
                 choices.append(scene_screen_choices[get_choice_number(i-1, cur_selected_choice, cur_screen_choices)])
                 cur_screen_choices = scene_screen_choices
                 cur_selected_choice = current_scene_choice
+                
+            elif state == 'start':
+                send_request()
+                choices.append(home_screen_choices[get_choice_number(i-1, cur_selected_choice, cur_screen_choices)])
+                cur_screen_choices = home_screen_choices
+                cur_selected_choice = current_home_choice
 
         clear()
         graphics.set_pen(0)
@@ -180,7 +431,7 @@ def update():
         graphics.text(choices[1], int(get_text_position(choices[1], main_text_scale)), 50, wordwrap=WIDTH - 20, scale=main_text_scale)
         graphics.text(choices[2], int(get_text_position(choices[2], other_text_scale)), 100, scale=other_text_scale)
         graphics.update()
-            
+        
 #         if state == 'Start Lightning':
 #             state = 'home'
 #             y = urequests.post(start_lightning_url, json = start_lightning_json, headers = {'Content-Type': 'application/json'})
