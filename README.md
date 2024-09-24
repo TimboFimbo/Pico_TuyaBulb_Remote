@@ -26,4 +26,4 @@ Notes and TODOs:
     - 2: Trigger Random Colour Scene, with selected bulbs and colours used.
     - 3: Trigger Xmas Scene, which will be removed soon.
 
-- Although everything works, it was started as a simple script to light up the keypad buttons, but is getting more complex over time. It's not unreadable, but it needs some tidying up before much more is added.
+- Although everything works, it was started as a simple script to light up the keypad buttons, but has now become unreadable. I plan on redoing it soon, but in the meantime, I've started on a contoller for the Pico Inky Pack (https://shop.pimoroni.com/products/pico-inky-pack?variant=40044626051155), which will have similar functions when complete. More to be added soon.

@@ -19,12 +19,12 @@ import config
 ssid = config.REMOTE_SSID
 password = config.REMOTE_PASSWORD
 base_url = config.BASE_URL
-set_colour_url = base_url + '/set_colour'
+set_colour_url = base_url + '/set_colour_async'
 set_power_url = base_url + '/set_power'
 set_brightness_url = base_url + '/brightness'
 start_xmas_url = base_url + '/start_xmas_scene'
-start_random_url = base_url + '/start_random_colour_scene'
-start_multi_url = base_url + '/start_multi_colour_scene'
+start_random_url = base_url + '/start_random_colour_scene_async'
+start_multi_url = base_url + '/start_multi_colour_scene_async'
 
 keypad = picokeypad.PicoKeypad()
 keypad.set_brightness(1.0)
