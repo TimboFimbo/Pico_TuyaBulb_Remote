@@ -71,6 +71,7 @@ speed_screen_choices = [
 
 bulbs_screen_choices = [
     "Default",
+    "Select All",
     "Black Lamp",
     "White Lamp",
     "Wood Lamp",
@@ -365,20 +366,28 @@ def update():
     global current_home_choice
     global current_scene_choice
     
-    graphics.set_font("bitmap8")
-    graphics.set_update_speed(1)
+    graphics.set_font("bitmap6")
+    graphics.set_update_speed(2)
     
     main_text_scale = 3
     other_text_scale = 2
+    help_text_scale = 1
     number_of_choices_shown = 3
     
     choices = []
     cur_screen_choices = []
     cur_selected_choice = 0
     
+    home_help = "Press A / C to Scroll. Press B to Select. Hold B to Start"
+    scene_help = "Press A / C to Scroll. Press B to Select."
+    
+    cur_help_message = home_help
+    
     for i in range(0, number_of_choices_shown):
-        if state == 'home' or state == 'start':
+#         if state == 'home' or state == 'start':
+        if state == 'home':
             choice = home_screen_choices[get_choice_number(i-1, current_home_choice, home_screen_choices)]
+            cur_help_message = home_help
             
             if choice == 'Scene: ':
                 choices.append(home_screen_choices[get_choice_number(i-1, current_home_choice, home_screen_choices)] + scene_screen_choices[current_scene_choice])
@@ -398,6 +407,7 @@ def update():
             
         elif state == 'scene_screen':
             choices.append(scene_screen_choices[get_choice_number(i-1, current_scene_choice, scene_screen_choices)])
+            cur_help_message = scene_help
             cur_screen_choices = scene_screen_choices
             cur_selected_choice = current_scene_choice
     
@@ -419,17 +429,18 @@ def update():
                 cur_screen_choices = scene_screen_choices
                 cur_selected_choice = current_scene_choice
                 
-            elif state == 'start':
-                send_request()
-                choices.append(home_screen_choices[get_choice_number(i-1, cur_selected_choice, cur_screen_choices)])
-                cur_screen_choices = home_screen_choices
-                cur_selected_choice = current_home_choice
+#             elif state == 'start':
+#                 send_request()
+#                 choices.append(home_screen_choices[get_choice_number(i-1, cur_selected_choice, cur_screen_choices)])
+#                 cur_screen_choices = home_screen_choices
+#                 cur_selected_choice = current_home_choice
 
         clear()
         graphics.set_pen(0)
         graphics.text(choices[0], int(get_text_position(choices[0], other_text_scale)), 10, scale=other_text_scale)
-        graphics.text(choices[1], int(get_text_position(choices[1], main_text_scale)), 50, wordwrap=WIDTH - 20, scale=main_text_scale)
-        graphics.text(choices[2], int(get_text_position(choices[2], other_text_scale)), 100, scale=other_text_scale)
+        graphics.text(choices[1], int(get_text_position(choices[1], main_text_scale)), 40, wordwrap=WIDTH - 20, scale=main_text_scale)
+        graphics.text(choices[2], int(get_text_position(choices[2], other_text_scale)), 80, scale=other_text_scale)
+        graphics.text(cur_help_message, int(get_text_position(cur_help_message, help_text_scale)), 110, scale=help_text_scale)
         graphics.update()
         
 #         if state == 'Start Lightning':
@@ -445,6 +456,8 @@ def check_for_button_presses():
     global home_screen_choices
     global scene_screen_choices
     global state
+    
+    hold_time_to_start = 2
     
     if changed_state == False:
         if button_a.read():
@@ -469,9 +482,26 @@ def check_for_button_presses():
                 
         if button_b.read():
             if state == 'home':
+                start_hold = time.time()
+                held_time = 0
                 state = select_option(current_home_choice, state)
+                while button_b.pressed:
+                    held_time = time.time() - start_hold
+                    print("Held time: " + str(held_time))
+                    if held_time > hold_time_to_start:
+                        state = 'start'
+                        break
+                    time.sleep(0.1)
+                    button_b.read()
+                print("Button released")
+                
             elif state == 'scene_screen':
                     state = 'home'
+            
+            if state == 'start': # perform action when 'start' is selected
+                send_request()
+                state = 'home'
+            
             changed_state = True
 
 network_manager = NetworkManager(WIFI_CONFIG.COUNTRY, status_handler=status_handler)
