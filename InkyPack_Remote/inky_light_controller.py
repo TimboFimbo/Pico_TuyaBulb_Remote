@@ -22,6 +22,8 @@ button_c = Button(14)
 WIDTH, HEIGHT = graphics.get_bounds()
 # change the ip address to that of the computer running the api
 ENDPOINT = 'http://192.168.0.116:8000'
+set_power_url = ENDPOINT + '/set_power'
+start_colours_url = ENDPOINT + '/set_colour_async'
 start_shifting_url = ENDPOINT + '/start_multi_colour_scene_async'
 start_random_url = ENDPOINT + '/start_random_colour_scene_async'
 start_lightning_url = ENDPOINT + '/start_lightning_scene'
@@ -33,7 +35,7 @@ changed_state = True
 home_screen_choices = [
     "Scene: ",
     "Colours: ",
-    "Brightness: ",
+    "Bright: ",
     "Speed: ",
     "Bulbs: ",
     "Start",
@@ -89,6 +91,51 @@ current_bulbs_choice = 0
 # ******** JSON Requests ********
 
 # names here should match those in the API
+
+bulb_toggles = [
+    {
+      "name": "Black Lamp",
+      "bright_mul": 0.5,
+      "toggle": True
+    },
+    {
+      "name": "White Lamp",
+      "bright_mul": 1.0,
+      "toggle": True
+    },
+    {
+      "name": "Chair Light",
+      "bright_mul": 2.0,
+      "toggle": True
+    },
+    {
+      "name": "Den Light",
+      "bright_mul": 1.0,
+      "toggle": True
+    },
+    {
+      "name": "Wood Lamp",
+      "bright_mul": 1.0,
+      "toggle": True
+    },
+    {
+      "name": "Sofa Light",
+      "bright_mul": 2.0,
+      "toggle": True
+    }      
+]  
+
+set_power_json = {
+  "power": False,
+  "toggles": bulb_toggles
+}
+
+start_colours_json = {
+  "red": 128,
+  "green": 64,
+  "blue": 0,
+  "toggles": bulb_toggles
+}
 
 start_lightning_json = {
   "lightning_colour": {
@@ -189,38 +236,7 @@ start_shifting_json = {
 
 start_random_json = {
   "wait_time": 600,
-  "toggles": [
-    {
-      "name": "Black Lamp",
-      "bright_mul": 0.5,
-      "toggle": True
-    },
-    {
-      "name": "White Lamp",
-      "bright_mul": 1,
-      "toggle": True
-    },
-    {
-      "name": "Chair Light",
-      "bright_mul": 2,
-      "toggle": True
-    },
-    {
-      "name": "Den Light",
-      "bright_mul": 2,
-      "toggle": True
-    },
-    {
-      "name": "Wood Lamp",
-      "bright_mul": 1,
-      "toggle": True
-    },
-    {
-      "name": "Sofa Light",
-      "bright_mul": 2,
-      "toggle": True
-    }
-  ],
+  "toggles": bulb_toggles,
   "colour_list": [
     {
       "red": 255,
@@ -305,6 +321,18 @@ def status_handler(mode, status, ip):
     graphics.text("IP: {}".format(ip), 10, 60, scale=2)
     graphics.update()
     
+def send_power_request(power_on = False):
+    message = "Sending Request..."
+    message_scale = 2
+    clear()
+    graphics.set_pen(0)
+    graphics.text(message, int(get_text_position(message, message_scale)), 50, scale=message_scale)
+    graphics.update()
+    
+    y = urequests.put(set_power_url, json = set_power_json, headers = {'Content-Type': 'application/json'})
+    y.close()
+    print("Power Request Sent")
+    
 def send_request(): # for now, this only sends the defaults
     global state
     global changed_state
@@ -317,7 +345,11 @@ def send_request(): # for now, this only sends the defaults
     graphics.set_pen(0)
     graphics.text(message, int(get_text_position(message, message_scale)), 50, scale=message_scale)
     graphics.update()
-
+  
+    if scene_screen_choices[current_scene_choice] == "Colours":
+        y = urequests.put(start_colours_url, json = start_colours_json, headers = {'Content-Type': 'application/json'})
+        y.close()
+        print("Colours Scene Started")
     if scene_screen_choices[current_scene_choice] == "Shifting":
         y = urequests.post(start_shifting_url, json = start_shifting_json, headers = {'Content-Type': 'application/json'})
         y.close()
@@ -334,9 +366,6 @@ def send_request(): # for now, this only sends the defaults
     state = 'home'
     
 def get_choice_number(plus_or_minus: int, current_choice, screen_choices):
-#     global current_home_choice
-#     global home_screen_choices
-    
     new_choice_num = current_choice + plus_or_minus
     
     if new_choice_num >= len(screen_choices):
@@ -354,17 +383,37 @@ def select_option(current_choice, current_state):
     if current_state == 'home':
         if home_screen_choices[current_choice] == "Scene: ":
             return 'scene_screen'
+        if home_screen_choices[current_choice] == "Colours: ":
+            return 'colours_screen'
+        if home_screen_choices[current_choice] == "Bright: ":
+            return 'brightness_screen'
+        if home_screen_choices[current_choice] == "Speed: ":
+            return 'speed_screen'
+        if home_screen_choices[current_choice] == "Bulbs: ":
+            return 'bulbs_screen'
+        if home_screen_choices[current_choice] == "Lights Off":
+            return 'lights_off'
         if home_screen_choices[current_choice] == "Start":
-            return 'start'    
+            return 'start'
 
 def update():
     global printed_connection_status
     global changed_state
     global state
+    
     global home_screen_choices
     global scene_screen_choices
+    global colours_screen_choices
+    global brightness_screen_choices
+    global speed_screen_choices
+    global bulbs_screen_choices
+    
     global current_home_choice
     global current_scene_choice
+    global current_colours_choice
+    global current_brightness_choice
+    global current_speed_choice
+    global current_bulbs_choice
     
     graphics.set_font("bitmap6")
     graphics.set_update_speed(2)
@@ -380,6 +429,10 @@ def update():
     
     home_help = "Press A / C to Scroll. Press B to Select. Hold B to Start"
     scene_help = "Press A / C to Scroll. Press B to Select."
+    colours_help = "Press A / C to Scroll. Press B to Select."
+    brightness_help = "Press A / C to Scroll. Press B to Select."
+    speed_help = "Press A / C to Scroll. Press B to Select."
+    bulbs_help = "Press A / C to Scroll. Press B to Select."
     
     cur_help_message = home_help
     
@@ -393,7 +446,7 @@ def update():
                 choices.append(home_screen_choices[get_choice_number(i-1, current_home_choice, home_screen_choices)] + scene_screen_choices[current_scene_choice])
             elif choice == 'Colours: ':
                 choices.append(home_screen_choices[get_choice_number(i-1, current_home_choice, home_screen_choices)] + colours_screen_choices[current_colours_choice])
-            elif choice == 'Brightness: ':
+            elif choice == 'Bright: ':
                 choices.append(home_screen_choices[get_choice_number(i-1, current_home_choice, home_screen_choices)] + brightness_screen_choices[current_brightness_choice])
             elif choice == 'Speed: ':
                 choices.append(home_screen_choices[get_choice_number(i-1, current_home_choice, home_screen_choices)] + speed_screen_choices[current_speed_choice])
@@ -410,6 +463,30 @@ def update():
             cur_help_message = scene_help
             cur_screen_choices = scene_screen_choices
             cur_selected_choice = current_scene_choice
+            
+        elif state == 'colours_screen': # update to mark chosen values
+            choices.append(colours_screen_choices[get_choice_number(i-1, current_colours_choice, colours_screen_choices)])
+            cur_help_message = colours_help
+            cur_screen_choices = colours_screen_choices
+            cur_selected_choice = current_colours_choice
+            
+        elif state == 'brightness_screen':
+            choices.append(brightness_screen_choices[get_choice_number(i-1, current_brightness_choice, brightness_screen_choices)])
+            cur_help_message = brightness_help
+            cur_screen_choices = brightness_screen_choices
+            cur_selected_choice = current_brightness_choice
+            
+        elif state == 'speed_screen':
+            choices.append(speed_screen_choices[get_choice_number(i-1, current_speed_choice, speed_screen_choices)])
+            cur_help_message = speed_help
+            cur_screen_choices = speed_screen_choices
+            cur_selected_choice = current_speed_choice
+            
+        elif state == 'bulbs_screen': # update to mark chosen values
+            choices.append(bulbs_screen_choices[get_choice_number(i-1, current_bulbs_choice, bulbs_screen_choices)])
+            cur_help_message = bulbs_help
+            cur_screen_choices = bulbs_screen_choices
+            cur_selected_choice = current_bulbs_choice
     
     if printed_connection_status == False:
             uasyncio.get_event_loop().run_until_complete(network_manager.client(WIFI_CONFIG.SSID, WIFI_CONFIG.PSK))
@@ -418,16 +495,16 @@ def update():
     if changed_state == True:
         changed_state = False
         
-        for i in range(0, number_of_choices_shown):
-            if state == 'home':
-                choices.append(home_screen_choices[get_choice_number(i-1, cur_selected_choice, cur_screen_choices)])
-                cur_screen_choices = home_screen_choices
-                cur_selected_choice = current_home_choice
-                
-            elif state == 'scene_screen':
-                choices.append(scene_screen_choices[get_choice_number(i-1, cur_selected_choice, cur_screen_choices)])
-                cur_screen_choices = scene_screen_choices
-                cur_selected_choice = current_scene_choice
+#         for i in range(0, number_of_choices_shown):
+#             if state == 'home':
+#                 choices.append(home_screen_choices[get_choice_number(i-1, cur_selected_choice, cur_screen_choices)])
+#                 cur_screen_choices = home_screen_choices
+#                 cur_selected_choice = current_home_choice
+#                 
+#             elif state == 'scene_screen':
+#                 choices.append(scene_screen_choices[get_choice_number(i-1, cur_selected_choice, cur_screen_choices)])
+#                 cur_screen_choices = scene_screen_choices
+#                 cur_selected_choice = current_scene_choice
                 
 #             elif state == 'start':
 #                 send_request()
@@ -453,32 +530,76 @@ def check_for_button_presses():
     global changed_state
     global current_home_choice
     global current_scene_choice
+    global current_colours_choice
+    global current_brightness_choice
+    global current_speed_choice
+    global current_bulbs_choice
+    
     global home_screen_choices
     global scene_screen_choices
+    global colours_screen_choices
+    global brightness_screen_choices
+    global speed_screen_choices
+    global bulbs_screen_choices
     global state
     
     hold_time_to_start = 2
+    scrolling = False
+    dir_to_scroll = 1
     
     if changed_state == False:
-        if button_a.read():
-            if state == 'home':
-                current_home_choice = get_choice_number(-1, current_home_choice, home_screen_choices)
-                #set_current_home_choices(-1)
-                changed_state = True
-            elif state == 'scene_screen':
-                current_scene_choice = get_choice_number(-1, current_scene_choice, scene_screen_choices)
-                #set_current_home_choices(-1)
-                changed_state = True            
+#         if button_a.read():
+#             if state == 'home':
+#                 current_home_choice = get_choice_number(-1, current_home_choice, home_screen_choices)
+#                 #set_current_home_choices(-1)
+#                 changed_state = True
+#             elif state == 'scene_screen':
+#                 current_scene_choice = get_choice_number(-1, current_scene_choice, scene_screen_choices)
+#                 #set_current_home_choices(-1)
+#                 changed_state = True
+#             elif state == 'colours_screen':
+#                 current_colours_choice = get_choice_number(-1, current_colours_choice, colours_screen_choices)
+#                 #set_current_home_choices(-1)
+#                 changed_state = True  
+#             
+#         if button_c.read():
+#             if state == 'home':
+#                 current_home_choice = get_choice_number(1, current_home_choice, home_screen_choices)
+#                 #set_current_home_choices(1)
+#                 changed_state = True
+#             elif state == 'scene_screen':
+#                 current_scene_choice = get_choice_number(1, current_scene_choice, scene_screen_choices)
+#                 #set_current_home_choices(-1)
+#                 changed_state = True
                 
+        if button_a.read():
+            scrolling = True
+            dir_to_scroll = -1
+            
         if button_c.read():
+            scrolling = True
+            dir_to_scroll = 1
+            
+        if scrolling:
+            scrolling = False
             if state == 'home':
-                current_home_choice = get_choice_number(1, current_home_choice, home_screen_choices)
-                #set_current_home_choices(1)
+                current_home_choice = get_choice_number(dir_to_scroll, current_home_choice, home_screen_choices)
                 changed_state = True
             elif state == 'scene_screen':
-                current_scene_choice = get_choice_number(1, current_scene_choice, scene_screen_choices)
-                #set_current_home_choices(-1)
-                changed_state = True   
+                current_scene_choice = get_choice_number(dir_to_scroll, current_scene_choice, scene_screen_choices)
+                changed_state = True
+            elif state == 'colours_screen':
+                current_colours_choice = get_choice_number(dir_to_scroll, current_colours_choice, colours_screen_choices)
+                changed_state = True
+            elif state == 'brightness_screen':
+                current_brightness_choice = get_choice_number(dir_to_scroll, current_brightness_choice, brightness_screen_choices)
+                changed_state = True
+            elif state == 'speed_screen':
+                current_speed_choice = get_choice_number(dir_to_scroll, current_speed_choice, speed_screen_choices)
+                changed_state = True
+            elif state == 'bulbs_screen':
+                current_bulbs_choice = get_choice_number(dir_to_scroll, current_bulbs_choice, bulbs_screen_choices)
+                changed_state = True
                 
         if button_b.read():
             if state == 'home':
@@ -488,18 +609,25 @@ def check_for_button_presses():
                 while button_b.pressed:
                     held_time = time.time() - start_hold
                     print("Held time: " + str(held_time))
-                    if held_time > hold_time_to_start:
+                    if held_time >= hold_time_to_start:
                         state = 'start'
                         break
                     time.sleep(0.1)
                     button_b.read()
                 print("Button released")
                 
-            elif state == 'scene_screen':
-                    state = 'home'
+#             elif state == 'scene_screen' or state == 'brightness_scene' or state == 'speed_screen'
+#                     state = 'home' # add others in later
+
+            else:
+                state = 'home' # get rid of this once colours and bulbs are added above
             
             if state == 'start': # perform action when 'start' is selected
                 send_request()
+                state = 'home'
+                
+            if state == 'lights_off':
+                send_power_request(False)
                 state = 'home'
             
             changed_state = True
