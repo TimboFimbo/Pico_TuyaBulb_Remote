@@ -32,6 +32,64 @@ printed_connection_status = False
 state = 'home' # states: home, scene_screen, scene_options, colours, start
 changed_state = True
 
+all_colours = {
+    "black_colour": {
+        "red": 0,
+        "green": 0,
+        "blue": 0},
+    "white_colour": {
+        "red": 32,
+        "green": 32,
+        "blue": 32},
+    "red_colour": {
+        "red": 32,
+        "green": 0,
+        "blue": 0},
+    "rose_colour": {
+        "red": 32,
+        "green": 0,
+        "blue": 16},
+    "magenta_colour": {
+        "red": 32,
+        "green": 0,
+        "blue": 32},
+    "violet_colour": {
+        "red": 16,
+        "green": 0,
+        "blue": 32},
+    "blue_colour": {
+        "red": 0,
+        "green": 0,
+        "blue": 32},
+    "azure_colour": {
+        "red": 0,
+        "green": 16,
+        "blue": 32},
+    "cyan_colour": {
+        "red": 0,
+        "green": 32,
+        "blue": 32},
+    "spring_green_colour": {
+        "red": 0,
+        "green": 32,
+        "blue": 16},
+    "green_colour": {
+        "red": 0,
+        "green": 32,
+        "blue": 0},
+    "chartreuse_colour": {
+        "red": 16,
+        "green": 32,
+        "blue": 0},
+    "yellow_colour": {
+        "red": 32,
+        "green": 32,
+        "blue": 0},
+    "orange_colour": {
+        "red": 32,
+        "green": 16,
+        "blue": 0},}
+
 home_screen_choices = [
     "Scene: ",
     "Colours: ",
@@ -57,11 +115,14 @@ colours_screen_choices = [
 
 brightness_screen_choices = [
     "Default",
-    "V. Low",
-    "Low",
-    "Medium",
-    "High",
-    "V. High"]
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"]
 
 speed_screen_choices = [
     "Default",
@@ -82,7 +143,7 @@ bulbs_screen_choices = [
     "Sofa Light"]
 
 current_home_choice = 0
-current_scene_choice = 3
+current_scene_choice = 1
 current_colours_choice = 0
 current_brightness_choice = 0
 current_speed_choice = 0
@@ -138,11 +199,12 @@ start_colours_json = {
 }
 
 start_lightning_json = {
-  "lightning_colour": {
-    "red": 255,
-    "green": 255,
-    "blue": 255
-  },
+#   "lightning_colour": {
+#     "red": 255
+#     "green": 255,
+#     "blue": 255
+#   },
+  "lightning_colour": all_colours["white_colour"],
   "lightning_percent_chance": 20,
   "lightning_length": 0.4,
   "default_brightness": 10,
@@ -167,8 +229,9 @@ start_lightning_json = {
   ]
 }
 
+# you have to have a copy, as below, and no references to other dictionaries, or they will change too
 start_shifting_json = {
-  "wait_time": 600,
+  "wait_time": 60,
   "bulb_lists": [
     [
       {
@@ -207,97 +270,136 @@ start_shifting_json = {
   ],
   "colour_list": [
     {
-      "red": 255,
-      "green": 128,
+      "red": 32,
+      "green": 16,
       "blue": 0
     },
     {
-      "red": 255,
+      "red": 32,
       "green": 0,
-      "blue": 128
+      "blue": 16
     },
     {
       "red": 0,
-      "green": 128,
-      "blue": 255
+      "green": 16,
+      "blue": 32
     },
     {
-      "red": 128,
-      "green": 255,
+      "red": 16,
+      "green": 32,
       "blue": 0
     },
     {
-      "red": 128,
+      "red": 16,
       "green": 0,
-      "blue": 255
+      "blue": 32
+    }
+  ]
+}
+shifting_default_brightness_mult = 4
+
+start_shifting_json_copy = {
+  "wait_time": 60,
+  "bulb_lists": [
+    [
+      {
+        "name": "Black Lamp",
+        "bright_mul": 0.5,
+        "toggle": True
+      },
+      {
+        "name": "Chair Light",
+        "bright_mul": 2,
+        "toggle": True
+      },
+      {
+        "name": "Den Light",
+        "bright_mul": 2,
+        "toggle": True
+      },
+      {
+        "name": "Sofa Light",
+        "bright_mul": 2,
+        "toggle": True
+      }
+    ],
+    [
+      {
+        "name": "White Lamp",
+        "bright_mul": 1,
+        "toggle": True
+      },
+      {
+        "name": "Wood Lamp",
+        "bright_mul": 1,
+        "toggle": True
+      }
+    ]
+  ],
+  "colour_list": [
+    {
+      "red": 32,
+      "green": 16,
+      "blue": 0
+    },
+    {
+      "red": 32,
+      "green": 0,
+      "blue": 16
+    },
+    {
+      "red": 0,
+      "green": 16,
+      "blue": 32
+    },
+    {
+      "red": 16,
+      "green": 32,
+      "blue": 0
+    },
+    {
+      "red": 16,
+      "green": 0,
+      "blue": 32
     }
   ]
 }
 
+# you cannot have references to other dictionaries or multipliers will change the originals
 start_random_json = {
   "wait_time": 600,
   "toggles": bulb_toggles,
   "colour_list": [
-    {
-      "red": 255,
-      "green": 0,
-      "blue": 0
-    },
-    {
-      "red": 0,
-      "green": 255,
-      "blue": 0
-    },
-    {
-      "red": 0,
-      "green": 0,
-      "blue": 255
-    },
-    {
-      "red": 255,
-      "green": 0,
-      "blue": 128
-    },
-    {
-      "red": 255,
-      "green": 0,
-      "blue": 255
-    },
-    {
-      "red": 128,
-      "green": 0,
-      "blue": 255
-    },
-    {
-      "red": 0,
-      "green": 128,
-      "blue": 255
-    },
-    {
-      "red": 0,
-      "green": 255,
-      "blue": 255
-    },
-    {
-      "red": 0,
-      "green": 255,
-      "blue": 128
-    },
-    {
-      "red": 128,
-      "green": 255,
-      "blue": 0
-    },
-    {
-      "red": 255,
-      "green": 255,
-      "blue": 0
-    },
-    {
-      "red": 255,
-      "green": 128,
-      "blue": 0
-    }
+      all_colours["red_colour"],
+      all_colours["rose_colour"],
+      all_colours["magenta_colour"],
+      all_colours["violet_colour"],
+      all_colours["blue_colour"],
+      all_colours["azure_colour"],
+      all_colours["cyan_colour"],
+      all_colours["spring_green_colour"],
+      all_colours["chartreuse_colour"],
+      all_colours["yellow_colour"],
+      all_colours["orange_colour"]      
+  ]
+}
+random_default_brightness_mult = 4
+
+start_random_json_copy = {
+  "wait_time": 600,
+  "toggles": bulb_toggles,
+  "colour_list": [
+      all_colours["red_colour"],
+      all_colours["rose_colour"],
+      all_colours["magenta_colour"],
+      all_colours["violet_colour"],
+      all_colours["blue_colour"],
+      all_colours["azure_colour"],
+      all_colours["cyan_colour"],
+      all_colours["spring_green_colour"],
+      all_colours["chartreuse_colour"],
+      all_colours["yellow_colour"],
+      all_colours["orange_colour"]      
   ]
 }
 
@@ -338,6 +440,8 @@ def send_request(): # for now, this only sends the defaults
     global changed_state
     global scene_screen_choices
     global current_scene_choice
+    global brightness_screen_choices
+    global random_default_brightness_mult
     
     message = "Sending Request..."
     message_scale = 2
@@ -345,19 +449,78 @@ def send_request(): # for now, this only sends the defaults
     graphics.set_pen(0)
     graphics.text(message, int(get_text_position(message, message_scale)), 50, scale=message_scale)
     graphics.update()
-  
+    
     if scene_screen_choices[current_scene_choice] == "Colours":
         y = urequests.put(start_colours_url, json = start_colours_json, headers = {'Content-Type': 'application/json'})
         y.close()
         print("Colours Scene Started")
-    if scene_screen_choices[current_scene_choice] == "Shifting":
-        y = urequests.post(start_shifting_url, json = start_shifting_json, headers = {'Content-Type': 'application/json'})
+        
+    if scene_screen_choices[current_scene_choice] == "Shifting": # this one works - copy it for others
+        
+        brightness_mutiplier = shifting_default_brightness_mult
+        
+        if brightness_screen_choices[current_brightness_choice]!= "Default":
+            brightness_mutiplier = int(brightness_screen_choices[current_brightness_choice])
+            
+        print("Brightness Multipler: " + str(brightness_mutiplier))
+        
+        request_to_send = start_shifting_json_copy
+        
+        for i in range(len(request_to_send["colour_list"])):
+            request_to_send["colour_list"][i]['red'] = start_shifting_json["colour_list"][i]['red'] * brightness_mutiplier
+            request_to_send["colour_list"][i]['green'] = start_shifting_json["colour_list"][i]['green'] * brightness_mutiplier
+            request_to_send["colour_list"][i]['blue'] = start_shifting_json["colour_list"][i]['blue'] * brightness_mutiplier
+        
+        y = urequests.post(start_shifting_url, json = request_to_send, headers = {'Content-Type': 'application/json'})
         y.close()
         print("Shifting Scene Started")
+        print("Original Shifting JSON:")
+        print(start_shifting_json)
+        print(" ")
+        print("Request Shifting JSON:")
+        print(request_to_send)
+        print(" ")
+        
     elif scene_screen_choices[current_scene_choice] == "Random":
-        y = urequests.post(start_random_url, json = start_random_json, headers = {'Content-Type': 'application/json'})
+        brightness_mutiplier = random_default_brightness_mult
+        
+        if brightness_screen_choices[current_brightness_choice]!= "Default":
+            brightness_mutiplier = int(brightness_screen_choices[current_brightness_choice])
+            
+        print("Brightness Multipler: " + str(brightness_mutiplier))
+        
+        request_to_send = start_random_json_copy
+        
+        for i in range(len(request_to_send["colour_list"])):
+            request_to_send["colour_list"][i]['red'] = request_to_send["colour_list"][i]['red'] * brightness_mutiplier
+            request_to_send["colour_list"][i]['green'] = request_to_send["colour_list"][i]['green'] * brightness_mutiplier
+            request_to_send["colour_list"][i]['blue'] = request_to_send["colour_list"][i]['blue'] * brightness_mutiplier
+        
+#         for colour in request_to_send["colour_list"]:
+# #             print("Before mult: " + str(colour))
+#             colour['red'] = start_random_json.colour['red'] * brightness_mutiplier
+#             colour['green'] *= brightness_mutiplier
+#             colour['blue'] *= brightness_mutiplier
+# #             print("After mult: " + str(colour))
+            
+        print(start_random_json)
+        print(" ")
+#         for colour in request_to_send["colour_list"]:
+#             for shade in colour:
+# #                 print(shade)
+#                 colour[shade] = colour[shade] * brightness_mutiplier
+#                 if colour[shade] > 255:
+#                     colour[shade] = 255
+#             request_to_send.update(colour)
+#                 print(shade)
+                
+        print(request_to_send)
+        
+#         y = urequests.post(start_random_url, json = start_random_json, headers = {'Content-Type': 'application/json'})
+        y = urequests.post(start_random_url, json = request_to_send, headers = {'Content-Type': 'application/json'})
         y.close()
         print("Random Scene Started")
+        
     elif scene_screen_choices[current_scene_choice] == "Lightning":
         y = urequests.post(start_lightning_url, json = start_lightning_json, headers = {'Content-Type': 'application/json'})
         y.close()
@@ -415,12 +578,19 @@ def update():
     global current_speed_choice
     global current_bulbs_choice
     
-    graphics.set_font("bitmap6")
+    graphics.set_font("bitmap6") # normal font
+#     graphics.set_font("sans") # vector font
     graphics.set_update_speed(2)
     
-    main_text_scale = 3
+    main_text_scale = 3 # normal scales
     other_text_scale = 2
     help_text_scale = 1
+    
+#     main_text_scale = 1.2 # vector scales
+#     other_text_scale = 0.8
+#     help_text_scale = 0.4
+#     graphics.set_thickness(3)
+    
     number_of_choices_shown = 3
     
     choices = []
@@ -608,13 +778,11 @@ def check_for_button_presses():
                 state = select_option(current_home_choice, state)
                 while button_b.pressed:
                     held_time = time.time() - start_hold
-                    print("Held time: " + str(held_time))
                     if held_time >= hold_time_to_start:
                         state = 'start'
                         break
                     time.sleep(0.1)
                     button_b.read()
-                print("Button released")
                 
 #             elif state == 'scene_screen' or state == 'brightness_scene' or state == 'speed_screen'
 #                     state = 'home' # add others in later
